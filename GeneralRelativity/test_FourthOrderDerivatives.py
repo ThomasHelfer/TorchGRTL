@@ -14,10 +14,9 @@ def test_compare_diff_with_reference():
     computed derivatives are within a specified tolerance of the reference derivative data.
     """
     # Define the path to the test data files for variable X
-    filenamesX = (
-        os.path.dirname(os.path.abspath(sys.argv[0])) + "/TestData/Xdata_level0_step*"
-    )
-
+    filenamesX = os.path.dirname(__file__) + "/TestData/Xdata_level0_step*"
+    print(filenamesX)
+    print(filenamesX)
     # Number of variables in the data
     num_varsX = 100
 
