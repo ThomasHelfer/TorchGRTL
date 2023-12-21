@@ -38,6 +38,7 @@ def test_TensorDict():
     oneoverdx = 64.0 / 4.0
 
     # Prepare the data and compute derivatives using TensorDict
+    dataXcut = cut_ghosts(dataX)
     vars = TensorDict(dataXcut, keys_all)
     d1 = TensorDict(diff1(dataX, oneoverdx), keys_all)
     d2 = TensorDict(diff2(dataX, oneoverdx**2), keys_all)
