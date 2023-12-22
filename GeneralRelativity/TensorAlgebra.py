@@ -2,6 +2,7 @@ import numpy as np
 from tqdm.auto import tqdm, trange
 import glob
 import torch
+from GeneralRelativity.DimensionDefinitions import FOR1, FOR2, FOR3, FOR4
 
 
 def compute_christoffel(d1_metric: torch.tensor, h_UU: torch.tensor) -> torch.tensor:
@@ -17,34 +18,25 @@ def compute_christoffel(d1_metric: torch.tensor, h_UU: torch.tensor) -> torch.te
     Tuple of np.ndarray: Two arrays representing the Christoffel symbols LLL and ULL, each of shape [batch, x, y, z, i, j, k].
     """
 
-    # Initialize the output arrays
-    shape = d1_metric.shape[:-1] + (
-        d1_metric.shape[-2],
-    )  # shape is [batch, x, y, z, i, j, k]
-    LLL = torch.zeros(shape, dtype=d1_metric.dtype)
-    ULL = torch.zeros(shape, dtype=d1_metric.dtype)
+    chris = {
+        "LLL": torch.zeros(d1_metric.shape, dtype=d1_metric.dtype),
+        "ULL": torch.zeros(d1_metric.shape, dtype=d1_metric.dtype),
+    }
 
     # Compute Christoffel symbols of the first kind (LLL)
     #         out.LLL[i][j][k] = 0.5 * (d1_metric[j][i][k] + d1_metric[k][i][j] -
     #                              d1_metric[j][k][i]);
-    for i in range(3):
-        for j in range(3):
-            for k in range(3):
-                LLL[..., i, j, k] = 0.5 * (
-                    +d1_metric[..., j, i, k]
-                    + d1_metric[..., k, i, j]
-                    - d1_metric[..., j, k, i]
-                )
+    for i, j, k in FOR3():
+        chris["LLL"][..., i, j, k] = 0.5 * (
+            +d1_metric[..., j, i, k] + d1_metric[..., k, i, j] - d1_metric[..., j, k, i]
+        )
 
     # Compute Christoffel symbols of the second kind
     #         FOR1(l) { out.ULL[i][j][k] += h_UU[i][l] * out.LLL[l][j][k]; }
-    for i in range(3):
-        for j in range(3):
-            for k in range(3):
-                for l in range(3):
-                    ULL[..., i, j, k] += h_UU[..., i, l] * LLL[..., l, j, k]
+    for i, j, k, l in FOR4():
+        chris["ULL"][..., i, j, k] += h_UU[..., i, l] * chris["LLL"][..., l, j, k]
 
-    return LLL, ULL
+    return chris
 
 
 def compute_christoffel_fast(
@@ -65,14 +57,16 @@ def compute_christoffel_fast(
 
     # Initialize the output tensors
     # batch, x, y, z, i, j, dx = d1_metric.shape
-    LLL = torch.zeros_like(d1_metric)
-    ULL = torch.zeros_like(LLL)
+    chris = {
+        "LLL": torch.zeros(d1_metric.shape, dtype=d1_metric.dtype),
+        "ULL": torch.zeros(d1_metric.shape, dtype=d1_metric.dtype),
+    }
 
     # Compute Christoffel symbols of the first kind (LLL)
     # Adjusting indices and dimensions for proper computation
     #  out.LLL[i][j][k] = 0.5 * (d1_metric[j][i][k] + d1_metric[k][i][j] - d1_metric[j][k][i]);
     test = (d1_metric).clone()
-    LLL = 0.5 * (
+    chris["LLL"] = 0.5 * (
         test.permute(0, 1, 2, 3, 4, 5, 6)
         + test.permute(0, 1, 2, 3, 4, 6, 5)
         - d1_metric.permute(0, 1, 2, 3, 6, 5, 4)
@@ -83,6 +77,23 @@ def compute_christoffel_fast(
     # Note: 'ijklmn->ijklm' aligns the dimensions correctly
     # Compute Christoffel symbols of the second kind
     #         FOR1(l) { out.ULL[i][j][k] += h_UU[i][l] * out.LLL[l][j][k]; }
-    ULL = torch.einsum("bxzyil,bxzyijk->bxzyijk", h_UU, LLL)
+    chris["ULL"] = torch.einsum("bxzyil,bxzyijk->bxzyijk", h_UU, chris["LLL"])
 
-    return LLL, ULL
+    return chris
+
+
+def compute_trace(tensor_LL, inverse_metric):
+    """
+    Computes the trace of a 2-Tensor with lower indices given an inverse metric.
+
+    Args:
+        tensor_LL (torch.Tensor): The 2-Tensor with lower indices.
+        inverse_metric (torch.Tensor): The inverse metric tensor.
+
+    Returns:
+        float: The trace of the tensor.
+    """
+    trace = 0.0
+    for i, j in FOR2():
+        trace += inverse_metric[..., i, j] * tensor_LL[..., i, j]
+    return trace

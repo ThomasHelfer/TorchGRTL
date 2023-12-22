@@ -1,6 +1,12 @@
 import torch
-from FourthOrderDerivatives import diff1, diff2
-from Utils import get_box_format, TensorDict, cut_ghosts, keys, keys_all
+from GeneralRelativity.FourthOrderDerivatives import diff1, diff2
+from GeneralRelativity.Utils import (
+    get_box_format,
+    TensorDict,
+    cut_ghosts,
+    keys,
+    keys_all,
+)
 import os
 import sys
 
@@ -15,8 +21,7 @@ def test_compare_diff_with_reference():
     """
     # Define the path to the test data files for variable X
     filenamesX = os.path.dirname(__file__) + "/TestData/Xdata_level0_step*"
-    print(filenamesX)
-    print(filenamesX)
+
     # Number of variables in the data
     num_varsX = 100
 

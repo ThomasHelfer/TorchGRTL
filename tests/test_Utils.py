@@ -1,6 +1,12 @@
 import torch
-from FourthOrderDerivatives import diff1, diff2
-from Utils import get_box_format, TensorDict, cut_ghosts, keys, keys_all
+from GeneralRelativity.FourthOrderDerivatives import diff1, diff2
+from GeneralRelativity.Utils import (
+    get_box_format,
+    TensorDict,
+    cut_ghosts,
+    keys,
+    keys_all,
+)
 import os
 import sys
 
