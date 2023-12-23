@@ -3,6 +3,10 @@ from tqdm.auto import tqdm, trange
 import glob
 import torch
 from GeneralRelativity.DimensionDefinitions import FOR1, FOR2, FOR3, FOR4
+from typing import Dict
+from GeneralRelativity.DimensionDefinitions import FOR1, FOR2
+from GeneralRelativity.TensorAlgebra import compute_trace
+import torch
 
 
 def compute_christoffel(d1_metric: torch.tensor, h_UU: torch.tensor) -> torch.tensor:
@@ -99,7 +103,9 @@ def compute_trace(tensor_LL, inverse_metric):
     return trace
 
 
-def raise_all(tensor_L: torch.Tensor, inverse_metric: torch.Tensor) -> torch.Tensor:
+def raise_all_vector(
+    tensor_L: torch.Tensor, inverse_metric: torch.Tensor
+) -> torch.Tensor:
     """
     Raises the index of a covector (tensor with a lower index) using the inverse metric.
 
@@ -114,3 +120,24 @@ def raise_all(tensor_L: torch.Tensor, inverse_metric: torch.Tensor) -> torch.Ten
     for i, j in FOR2():
         tensor_U[..., i] += inverse_metric[..., i, j] * tensor_L[..., j]
     return tensor_U
+
+
+def raise_all_metric(
+    tensor_LL: torch.Tensor, inverse_metric: torch.Tensor
+) -> torch.Tensor:
+    """
+    Raises the indices of a 2-Tensor using the inverse metric tensor.
+
+    Args:
+        tensor_LL (torch.Tensor): The 2-Tensor with lower indices.
+        inverse_metric (torch.Tensor): The inverse metric tensor (2-Tensor).
+
+    Returns:
+        torch.Tensor: The resulting tensor with indices raised (2-Tensor).
+    """
+    tensor_UU = torch.zeros_like(tensor_LL)
+    for i, j, k, l in FOR4():
+        tensor_UU[..., i, j] += (
+            inverse_metric[..., i, k] * inverse_metric[..., j, l] * tensor_LL[..., k, l]
+        )
+    return tensor_UU

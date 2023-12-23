@@ -11,6 +11,7 @@ def compute_ricci_Z(
     h_UU: torch.Tensor,
     chris: Dict[str, torch.Tensor],
     Z_over_chi: torch.Tensor,
+    GR_SPACEDIM: int = 4,
 ) -> Dict[str, torch.Tensor]:
     """
     Compute the Ricci tensor Z using the provided variables, derivatives, and Christoffel symbols.
@@ -28,7 +29,6 @@ def compute_ricci_Z(
     """
     out = {"LL": torch.zeros_like(vars["h"]), "scalar": 0}
 
-    GR_SPACEDIM = 4
     boxtildechi = 0
 
     covdtilde2chi = torch.zeros_like(vars["h"])
