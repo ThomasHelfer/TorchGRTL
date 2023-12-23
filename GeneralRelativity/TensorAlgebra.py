@@ -97,3 +97,20 @@ def compute_trace(tensor_LL, inverse_metric):
     for i, j in FOR2():
         trace += inverse_metric[..., i, j] * tensor_LL[..., i, j]
     return trace
+
+
+def raise_all(tensor_L: torch.Tensor, inverse_metric: torch.Tensor) -> torch.Tensor:
+    """
+    Raises the index of a covector (tensor with a lower index) using the inverse metric.
+
+    Args:
+        tensor_L (torch.Tensor): The covector (tensor with a lower index) to be raised.
+        inverse_metric (torch.Tensor): The inverse metric tensor.
+
+    Returns:
+        torch.Tensor: The resulting tensor with the index raised.
+    """
+    tensor_U = torch.zeros_like(tensor_L)
+    for i, j in FOR2():
+        tensor_U[..., i] += inverse_metric[..., i, j] * tensor_L[..., j]
+    return tensor_U
