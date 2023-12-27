@@ -140,3 +140,26 @@ def raise_all_metric(
             inverse_metric[..., i, k] * inverse_metric[..., j, l] * tensor_LL[..., k, l]
         )
     return tensor_UU
+
+
+def raise_all(tensor: torch.Tensor, inverse_metric: torch.Tensor) -> torch.Tensor:
+    """
+    Raises the indices of a (0,1,2)-Tensor using the inverse metric tensor.
+
+    Args:
+        tensor_LL (torch.Tensor): The 2-Tensor with lower indices.
+        inverse_metric (torch.Tensor): The inverse metric tensor (2-Tensor).
+
+    Returns:
+        torch.Tensor: The resulting tensor with indices raised (2-Tensor).
+    """
+    if len(tensor.shape) == 4:
+        return tensor
+    elif len(tensor.shape) == 5:
+        return raise_all_vector(tensor, inverse_metric)
+    elif len(tensor.shape) == 6:
+        return raise_all_metric(tensor, inverse_metric)
+    else:
+        raise ValueError(
+            "Raise_all can only deal with scalar,vector or tensor dimensions."
+        )

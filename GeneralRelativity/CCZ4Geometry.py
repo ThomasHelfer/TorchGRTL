@@ -32,23 +32,18 @@ def compute_ricci_Z(
     boxtildechi = 0
 
     covdtilde2chi = torch.zeros_like(vars["h"])
-    #    FOR2(k, l)
-    #    {
-    #        covdtilde2chi[k][l] = d2.chi[k][l];
-    #        FOR1(m) { covdtilde2chi[k][l] -= chris.ULL[m][k][l] * d1.chi[m]; }
-    #    }
     for k, l in FOR2():
+        # covdtilde2chi[k][l] = d2.chi[k][l];
         covdtilde2chi[..., k, l] = d2["chi"][..., k, l]
+        # FOR1(m) { covdtilde2chi[k][l] -= chris.ULL[m][k][l] * d1.chi[m]; }
         for m in FOR1():
             covdtilde2chi[..., k, l] -= chris["ULL"][..., m, k, l] * d1["chi"][..., m]
-    #    FOR2(k, l) { boxtildechi += h_UU[k][l] * covdtilde2chi[k][l]; }
+    # FOR2(k, l) { boxtildechi += h_UU[k][l] * covdtilde2chi[k][l]; }
     for k, l in FOR2():
         boxtildechi += h_UU[..., k, l] * covdtilde2chi[..., k, l]
     # data_t dchi_dot_dchi = 0;
-    #    {
-    #        FOR2(m, n) { dchi_dot_dchi += h_UU[m][n] * d1.chi[m] * d1.chi[n]; }
-    #    }
     dchi_dot_dchi = torch.zeros_like(vars["chi"][...])
+    # FOR2(m, n) { dchi_dot_dchi += h_UU[m][n] * d1.chi[m] * d1.chi[n]; }
     for m, n in FOR2():
         dchi_dot_dchi += h_UU[..., m, n] * d1["chi"][..., m] * d1["chi"][..., n]
 
@@ -62,12 +57,13 @@ def compute_ricci_Z(
         for k in FOR1():
             #    ricci_tilde += 0.5 * (vars.h[k][i] * d1.Gamma[k][j] +
             #                          vars.h[k][j] * d1.Gamma[k][i]);
-            #    ricci_tilde += 0.5 * (vars.Gamma[k] - 2 * Z_over_chi[k]) *
-            #                   (chris.LLL[i][j][k] + chris.LLL[j][i][k]);
+
             ricci_tilde += 0.5 * (
                 vars["h"][..., k, i] * d1["Gamma"][..., k, j]
                 + vars["h"][..., k, j] * d1["Gamma"][..., k, i]
             )
+            #    ricci_tilde += 0.5 * (vars.Gamma[k] - 2 * Z_over_chi[k]) *
+            #                   (chris.LLL[i][j][k] + chris.LLL[j][i][k]);
             ricci_tilde += (
                 0.5
                 * (vars["Gamma"][..., k] - 2 * Z_over_chi[..., k])
@@ -139,6 +135,7 @@ def compute_ricci(
     d2: Dict[str, torch.Tensor],
     h_UU: torch.Tensor,
     chris: Dict[str, torch.Tensor],
+    GR_SPACEDIM: int = 4,
 ) -> Dict[str, torch.Tensor]:
     """
     Compute the Ricci tensor using the provided variables, derivatives, and Christoffel symbols.
@@ -154,4 +151,4 @@ def compute_ricci(
         dict: Dictionary containing the components of the Ricci tensor.
     """
     Z0 = torch.zeros_like(torch.zeros_like(d1["chi"]))
-    return compute_ricci_Z(vars, d1, d2, h_UU, chris, Z0)
+    return compute_ricci_Z(vars, d1, d2, h_UU, chris, Z0, GR_SPACEDIM)
