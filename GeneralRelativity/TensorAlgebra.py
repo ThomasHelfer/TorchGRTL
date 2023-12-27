@@ -5,7 +5,6 @@ import torch
 from GeneralRelativity.DimensionDefinitions import FOR1, FOR2, FOR3, FOR4
 from typing import Dict
 from GeneralRelativity.DimensionDefinitions import FOR1, FOR2
-from GeneralRelativity.TensorAlgebra import compute_trace
 import torch
 
 
