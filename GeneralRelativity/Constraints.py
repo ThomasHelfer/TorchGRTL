@@ -11,7 +11,7 @@ def constraint_equations(
     d2: Dict[str, torch.Tensor],
     h_UU: torch.Tensor,
     chris: Dict[str, torch.Tensor],
-    GR_SPACEDIM: int = 4,
+    GR_SPACEDIM: int = 3,
     cosmological_constant: float = 0,
 ) -> Dict[str, torch.Tensor]:
     """
@@ -33,12 +33,13 @@ def constraint_equations(
         Dict[str, torch.Tensor]: A dictionary containing the computed constraint equations.
             Keys include 'Ham', 'Ham_abs_terms', 'Mom', 'Mom_abs_terms'.
     """
+    dtype = vars["chi"].dtype
 
     out = {
-        "Ham": torch.zeros_like(vars["chi"]),
-        "Ham_abs_terms": torch.zeros_like(vars["chi"]),
-        "Mom": torch.zeros_like(vars["shift"]),
-        "Mom_abs_terms": torch.zeros_like(vars["shift"]),
+        "Ham": torch.zeros_like(vars["chi"], dtype=dtype),
+        "Ham_abs_terms": torch.zeros_like(vars["chi"], dtype=dtype),
+        "Mom": torch.zeros_like(vars["shift"], dtype=dtype),
+        "Mom_abs_terms": torch.zeros_like(vars["shift"], dtype=dtype),
     }
 
     # auto ricci = CCZ4Geometry::compute_ricci(vars, d1, d2, h_UU, chris);
@@ -91,8 +92,8 @@ def constraint_equations(
     #   Tensor<1, data_t> covd_A_term = 0.0;
     #   Tensor<1, data_t> d1_chi_term = 0.0;
     #   const data_t chi_regularised = simd_max(1e-6, vars.chi);
-    covd_A_term = torch.zeros_like(d1["chi"])
-    d1_chi_term = torch.zeros_like(d1["chi"])
+    covd_A_term = torch.zeros_like(d1["chi"], dtype=dtype)
+    d1_chi_term = torch.zeros_like(d1["chi"], dtype=dtype)
     chi_regularised = torch.maximum(torch.tensor(1e-6), vars["chi"])
     for i, j, k in FOR3():
         #    covd_A_term[i] += h_UU[j][k] * covd_A[k][j][i];

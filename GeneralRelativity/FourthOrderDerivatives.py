@@ -14,8 +14,9 @@ def diff1(tensor: torch.Tensor, one_over_dx: float) -> torch.Tensor:
     :param one_over_dx: Inverse of the grid spacing.
     :return: Tensor of shape (batchsize, x-4, y-4, z-4, num_variables, 3) containing derivatives.
     """
-    weight_far = torch.tensor(8.333333333333333e-2)
-    weight_near = torch.tensor(6.666666666666667e-1)
+
+    weight_far = torch.tensor(8.333333333333333e-2, dtype=tensor.dtype)
+    weight_near = torch.tensor(6.666666666666667e-1, dtype=tensor.dtype)
 
     derivatives = []
 
@@ -55,9 +56,9 @@ def mixed_diff2_tensor(
     :return: Tensor containing mixed second derivatives.
     """
 
-    weight_far_far = 6.94444444444444444444e-3
-    weight_near_far = 5.55555555555555555556e-2
-    weight_near_near = 4.44444444444444444444e-1
+    weight_far_far = torch.tensor(6.94444444444444444444e-3, dtype=tensor.dtype)
+    weight_near_far = torch.tensor(5.55555555555555555556e-2, dtype=tensor.dtype)
+    weight_near_near = torch.tensor(4.44444444444444444444e-1, dtype=tensor.dtype)
 
     # Adjust indices for the spatial dimensions (add 1 because first dimension is batch)
     dim1 = i + 1
@@ -151,9 +152,9 @@ def diff2_multidim(tensor: torch.tensor, i: int, one_over_dx2: float) -> torch.t
     :param one_over_dx2: Inverse of the square of the grid spacing.
     :return: Tensor of the same shape as the input tensor containing the second derivative along the specified dimension.
     """
-    weight_far = 8.33333333333333333333e-2
-    weight_near = 1.33333333333333333333e0
-    weight_local = 2.50000000000000000000e0
+    weight_far = torch.tensor(8.33333333333333333333e-2, dtype=tensor.dtype)
+    weight_near = torch.tensor(1.33333333333333333333e0, dtype=tensor.dtype)
+    weight_local = torch.tensor(2.50000000000000000000e0, dtype=tensor.dtype)
 
     # Determine the spatial dimension to calculate the derivative
     dim = i + 1  # Adjusting for batch dimension

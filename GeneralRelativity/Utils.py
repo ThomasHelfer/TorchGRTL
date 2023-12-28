@@ -319,6 +319,10 @@ keys_all = [
     "dz_B1",
     "dz_B2",
     "dz_B3",
+    "Ham",
+    "Mom1",
+    "Mom2",
+    "Mom3",
 ]
 
 keys = [

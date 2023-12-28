@@ -115,7 +115,7 @@ def raise_all_vector(
     Returns:
         torch.Tensor: The resulting tensor with the index raised.
     """
-    tensor_U = torch.zeros_like(tensor_L)
+    tensor_U = torch.zeros_like(tensor_L, dtype=tensor_L.dtype)
     for i, j in FOR2():
         tensor_U[..., i] += inverse_metric[..., i, j] * tensor_L[..., j]
     return tensor_U
@@ -134,7 +134,7 @@ def raise_all_metric(
     Returns:
         torch.Tensor: The resulting tensor with indices raised (2-Tensor).
     """
-    tensor_UU = torch.zeros_like(tensor_LL)
+    tensor_UU = torch.zeros_like(tensor_LL, dtype=tensor_LL.dtype)
     for i, j, k, l in FOR4():
         tensor_UU[..., i, j] += (
             inverse_metric[..., i, k] * inverse_metric[..., j, l] * tensor_LL[..., k, l]
