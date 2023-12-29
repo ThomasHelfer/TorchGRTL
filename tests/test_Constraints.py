@@ -16,6 +16,17 @@ import sys
 
 
 def test_Constraints():
+    """
+    Test the Constraints class for correctness.
+
+    This function tests the Constraints class by comparing its output with precomputed data.
+    It reads test data for variable X from a specified directory, computes the necessary
+    derivatives, and checks if the output of the Constraints class is within a specified
+    tolerance level of the expected values.
+
+    The test passes if the computed values are sufficiently close to the expected values,
+    within a specified tolerance level.
+    """
     # Define the path to the test data files for variable X
     filenamesX = os.path.dirname(__file__) + "/TestData/Xdata_level0_step*"
 
@@ -36,6 +47,7 @@ def test_Constraints():
     d1 = TensorDict(diff1(dataX, oneoverdx), keys_all)
     h_UU = torch.inverse(vars["h"])
     chris = compute_christoffel(d1["h"], h_UU)
+    out = constraint_equations(vars, d1, d2, h_UU, chris)
 
     assert (f"{torch.mean(torch.abs(out['Ham']-vars['Ham']))}") < tol
 
