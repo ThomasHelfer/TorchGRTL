@@ -51,7 +51,7 @@ def test_Constraints():
     chris = compute_christoffel(d1["h"], h_UU)
     out = constraint_equations(vars, d1, d2, h_UU, chris)
 
-    assert (f"{torch.mean(torch.abs(out['Ham']-vars['Ham']))}") < tol
+    assert (torch.mean(torch.abs(out["Ham"] - vars["Ham"]))) < tol
 
 
 if __name__ == "__main__":
