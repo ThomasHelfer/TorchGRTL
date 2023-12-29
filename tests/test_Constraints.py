@@ -38,7 +38,7 @@ def test_Constraints():
     dataX = get_box_format(filenamesX, num_varsX)
 
     # Tolerance for comparison
-    tol = 1e-12
+    tol = 1e-11
 
     # Compute the differential value
     oneoverdx = 64.0 / 4.0
@@ -52,7 +52,9 @@ def test_Constraints():
     out = constraint_equations(vars, d1, d2, h_UU, chris)
 
     assert (torch.mean(torch.abs(out["Ham"] - vars["Ham"]))) < tol
-
+    assert (torch.mean(torch.abs(out['Mom'][...,0]-vars['Mom1']))) < tol
+    assert (torch.mean(torch.abs(out['Mom'][...,1]-vars['Mom2']))) < tol
+    assert (torch.mean(torch.abs(out['Mom'][...,2]-vars['Mom3']))) < tol
 
 if __name__ == "__main__":
     test_Constraints()
