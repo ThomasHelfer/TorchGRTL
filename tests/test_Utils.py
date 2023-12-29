@@ -32,7 +32,7 @@ def test_TensorDict():
     filenamesX = os.path.dirname(__file__) + "/TestData/Xdata_level0_step*"
 
     # Number of variables in the data
-    num_varsX = 100
+    num_varsX = 104
 
     # Read the data in a box format
     dataX = get_box_format(filenamesX, num_varsX)
