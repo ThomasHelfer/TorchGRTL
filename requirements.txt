@@ -4,3 +4,4 @@ pre-commit
 pytest
 numpy
 tqdm
+matplotlib
