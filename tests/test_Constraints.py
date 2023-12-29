@@ -11,6 +11,7 @@ from GeneralRelativity.TensorAlgebra import (
     compute_christoffel,
     compute_christoffel_fast,
 )
+from GeneralRelativity.Constraints import constraint_equations
 import os
 import sys
 
@@ -19,7 +20,7 @@ def test_Constraints():
     """
     Test the Constraints class for correctness.
 
-    This function tests the Constraints class by comparing its output with precomputed data.
+    This function tests the Constraints class by comparing its output with precomputed data from GRTL code ().
     It reads test data for variable X from a specified directory, computes the necessary
     derivatives, and checks if the output of the Constraints class is within a specified
     tolerance level of the expected values.
