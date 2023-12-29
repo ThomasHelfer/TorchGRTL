@@ -46,6 +46,7 @@ def test_Constraints():
     # Prepare the data and compute derivatives using TensorDict
     vars = TensorDict(cut_ghosts(dataX), keys_all)
     d1 = TensorDict(diff1(dataX, oneoverdx), keys_all)
+    d2 = TensorDict(diff2(dataX, oneoverdx**2), keys_all)
     h_UU = torch.inverse(vars["h"])
     chris = compute_christoffel(d1["h"], h_UU)
     out = constraint_equations(vars, d1, d2, h_UU, chris)
