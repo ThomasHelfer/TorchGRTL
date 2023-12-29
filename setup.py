@@ -18,14 +18,14 @@ setup(
     long_description=readme(),
     classifiers=[
         "Development Status :: 3 - Alpha",
-        "License :: OSI Approved :: Apache Software License",
+        "License :: OSI Approved :: MIT License",
         "Programming Language :: Python :: 3.8",
         "Topic :: Machine learning :: Physics :: Simulation :: General Relativity",
     ],
     keywords="Machine learning, Physics, Simulation, General Relativity",
     author="ThomasHelfer",
     author_email="thomashelfer@live.de",
-    license="Apache 2.0",
+    license="MIT",  # Updated to MIT License
     packages=find_packages(exclude=["tests"]),
     install_requires=read_requirements(),
     python_requires=">=3.8",
