@@ -35,10 +35,33 @@ Before installing TorchGRTL, ensure you have the following prerequisites:
    ```bash
    pre-commit install
    ```
-<!-- 
-Usage
-(Provide a brief introduction on how to use the library, perhaps with a simple example.)
--->
+
+## Usage
+
+   The TorchGRTL library offers powerful tools to compute a variety of quantities essential in numerical relativity. Here are some examples of how you can use the library:
+
+### Computing Christoffel Symbols
+
+   You can compute the Christoffel symbols, which are crucial in the context of general relativity for defining the Levi-Civita connection and geodesic equations:
+
+   ```python
+   # Compute the Christoffel symbols using the standard method
+   chris = compute_christoffel(d1['h'], h_UU)
+   ```
+
+   In these examples, d1['h'] refers to the first derivatives of the metric tensor, and h_UU is the inverse metric tensor.
+
+   Calculating Hamiltonian and Momentum Constraints
+   The library can also compute more complex quantities like the Hamiltonian and Momentum constraints, which are fundamental in ensuring the consistency of solutions in numerical relativity:
+
+   ```python
+   # Compute the Hamiltonian and Momentum constraints
+   out = constraint_equations(vars, d1, d2, h_UU, chris)
+   ```
+   Here, vars contains various tensor fields, d1 and d2 are the first and second derivatives of these tensor fields, and chris is the computed Christoffel symbols.
+
+### Self-Contained Example
+   For a full, self-contained example that demonstrates the library's capabilities, refer to example.py in the repository. This example will guide you through a typical use case, showing how to leverage TorchGRTL for numerical relativity simulations and calculations.
 
 ### License
 
