@@ -17,6 +17,7 @@ class TensorDict:
                 f"The number of keys must match the size of the tensor's {self.num_index} dimension."
             )
         self.tensor = tensor
+        self.device = tensor.device
         self.keys = keys
         self.key_to_index = {key: i for i, key in enumerate(keys)}
 
@@ -50,7 +51,9 @@ class TensorDict:
                                         ..., j, i, k, l
                                     ] = self.tensor.index_select(
                                         self.num_index,
-                                        torch.tensor([self.key_to_index[ij_key]]),
+                                        torch.tensor([self.key_to_index[ij_key]]).to(
+                                            self.device
+                                        ),
                                     )[
                                         ..., 0, k, l
                                     ]
@@ -62,7 +65,9 @@ class TensorDict:
                                     ..., j, i, k
                                 ] = self.tensor.index_select(
                                     self.num_index,
-                                    torch.tensor([self.key_to_index[ij_key]]),
+                                    torch.tensor([self.key_to_index[ij_key]]).to(
+                                        self.device
+                                    ),
                                 )[
                                     ..., 0, k
                                 ]
@@ -80,7 +85,7 @@ class TensorDict:
         elif (key == "Gamma") or (key == "shift") or (key == "B"):
             indices = [self.key_to_index[f"{key}{i+1}"] for i in range(3)]
             return torch.index_select(
-                self.tensor, self.num_index, torch.tensor(indices)
+                self.tensor, self.num_index, torch.tensor(indices).to(self.device)
             )
         # Dealing with scalar cases
         # Returns vector s with shape [batch,xdim,ydim,zdim]
@@ -88,7 +93,9 @@ class TensorDict:
         # for 2nd derivative it returns d_x d_y swith shape [batch,xdim,ydim,zdim,x,y]
         elif key in self.key_to_index:
             return torch.index_select(
-                self.tensor, self.num_index, torch.tensor([self.key_to_index[key]])
+                self.tensor,
+                self.num_index,
+                torch.tensor([self.key_to_index[key]]).to(self.device),
             ).squeeze(self.num_index)
         else:
             raise KeyError(f"Key '{key}' not found.")
