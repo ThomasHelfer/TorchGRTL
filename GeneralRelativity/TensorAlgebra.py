@@ -22,8 +22,8 @@ def compute_christoffel(d1_metric: torch.tensor, h_UU: torch.tensor) -> torch.te
     """
 
     chris = {
-        "LLL": torch.zeros(d1_metric.shape, dtype=d1_metric.dtype),
-        "ULL": torch.zeros(d1_metric.shape, dtype=d1_metric.dtype),
+        "LLL": torch.zeros_like(d1_metric),
+        "ULL": torch.zeros_like(d1_metric),
     }
 
     # Compute Christoffel symbols of the first kind (LLL)
@@ -61,8 +61,8 @@ def compute_christoffel_fast(
     # Initialize the output tensors
     # batch, x, y, z, i, j, dx = d1_metric.shape
     chris = {
-        "LLL": torch.zeros(d1_metric.shape, dtype=d1_metric.dtype),
-        "ULL": torch.zeros(d1_metric.shape, dtype=d1_metric.dtype),
+        "LLL": torch.zeros_like(d1_metric),
+        "ULL": torch.zeros_like(d1_metric),
     }
 
     # Compute Christoffel symbols of the first kind (LLL)

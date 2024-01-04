@@ -37,6 +37,7 @@ class TensorDict:
                 + (3, 3)
                 + self.tensor.shape[(self.num_index + 1) :],
                 dtype=self.tensor.dtype,
+                device=self.device,
             )
             for i in range(3):
                 for j in range(i, 3):
