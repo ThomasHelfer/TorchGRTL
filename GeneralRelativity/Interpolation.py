@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import itertools
 import torch
 import math
+import time
+from typing import Tuple
 
 
 def print_grid_lay_out(
@@ -38,7 +40,7 @@ def print_grid_lay_out(
     )
     ax.scatter(interp_point[0], interp_point[1], label="interpolation point", c="black")
     plt.legend()
-    plt.savefig("overview.png")
+    plt.savefig("layout_interpolation_grid.png")
     plt.close()
 
 
@@ -133,17 +135,9 @@ def calculate_stencils(
     return vecvals, coarse_grid_points_index
 
 
-import numpy as np
-import torch
-import itertools
-import math
-
 class interp:
     def __init__(
-        self,
-        num_points: int = 6,
-        max_degree: int = 3,
-        align_grids_with_lower_dim_values: bool = False,
+        self, num_points=6, max_degree=3, align_grids_with_lower_dim_values=False
     ):
         """
         Initialize the interp class.
@@ -180,7 +174,7 @@ class interp:
         self.grid_points_index_array = torch.tensor(self.grid_points_index_array)
         self.vecvals_array = torch.tensor(self.vecvals_array)
 
-    def __call__(self, tensor: torch.tensor) -> torch.tensor:
+    def __call__(self, tensor: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Perform the interpolation on the given tensor.
 
@@ -190,6 +184,7 @@ class interp:
         Returns:
         torch.tensor: The interpolated tensor.
         """
+
         # Calculate the number of ghost points based on num_points
         ghosts = int(math.ceil(self.num_points / 2))
         shape = tensor.shape
@@ -198,23 +193,23 @@ class interp:
         interpolation = torch.zeros(
             shape[0],
             shape[1],
-            (shape[2] - 2 * ghosts) * 2,
-            (shape[3] - 2 * ghosts) * 2,
-            (shape[4] - 2 * ghosts) * 2,
+            (shape[2] - 2 * ghosts) * 2 + 2,
+            (shape[3] - 2 * ghosts) * 2 + 2,
+            (shape[4] - 2 * ghosts) * 2 + 2,
         )
 
         # Initialize a tensor to store positions
         position = torch.zeros(
-            (shape[2] - 2 * ghosts) * 2,
-            (shape[3] - 2 * ghosts) * 2,
-            (shape[4] - 2 * ghosts) * 2,
+            (shape[2] - 2 * ghosts) * 2 + 2,
+            (shape[3] - 2 * ghosts) * 2 + 2,
+            (shape[4] - 2 * ghosts) * 2 + 2,
             3,
         )
 
         # Perform interpolation
-        for i in range(ghosts, shape[2] - ghosts):
-            for j in range(ghosts, shape[3] - ghosts):
-                for k in range(ghosts, shape[4] - ghosts):
+        for i in range(ghosts - 1, shape[2] - ghosts):
+            for j in range(ghosts - 1, shape[3] - ghosts):
+                for k in range(ghosts - 1, shape[4] - ghosts):
                     index_for_input_array = torch.tensor([i, j, k])
                     for (
                         displacements,
@@ -227,71 +222,75 @@ class interp:
                         self.relative_index_for_interpolated_array,
                         self.relative_positions,
                     ):
-                        test = 0
                         result = 0
                         for displacement, weight in zip(displacements, weights):
+                            # Ensure indices are scalar values
                             index = index_for_input_array + displacement
                             result += (
                                 weight * tensor[:, :, index[0], index[1], index[2]]
                             )
-                            test += weight
+
                         # Writing results to the interpolated array
-                        ind = 2 * (index_for_input_array - ghosts) + (relative_index)
+                        ind = 2 * (index_for_input_array - (ghosts - 1)) + (
+                            relative_index
+                        )
                         interpolation[:, :, ind[0], ind[1], ind[2]] = result
                         # This array gives the position of the interpolated point in the interpolated array relative to the input array
                         position[ind[0], ind[1], ind[2]] = (
                             index_for_input_array + relative_position
                         )
+
         return interpolation, position
 
+    def sinusoidal_function(self, x, y, z):
+        """
+        A sinusoidal function of three variables x, y, and z.
+        """
+        return np.sin(x) * np.sin(y) * np.sin(z)
 
-def sinusoidal_function(x, y, z):
-    """
-    A sinusoidal function of three variables x, y, and z.
-    """
-    return np.sin(x) * np.sin(y) * np.sin(z)
-def sinusoidal_function(x, y, z):
-    """
-    A sinusoidal function of three variables x, y, and z.
-    """
-    return (x) 
+    def plot_grid_position(self):
+        length = 10
+        dx = 0.01
+        x = torch.rand(2, 25, length, length, length)
+        input_positions = torch.zeros(length, length, length, 3)
+        for i in range(x.shape[2]):
+            for j in range(x.shape[3]):
+                for k in range(x.shape[4]):
+                    input_positions[i, j, k] = torch.tensor([i, j, k])
+                    pos = dx * np.array([i, j, k])
+                    x[:, :, i, j, k] = self.sinusoidal_function(*pos)
+        time1 = time.time()
+        interpolated, positions = self(x)
+        print(f"Time taken for interpolation: {(time.time() - time1):.2f} sec")
+        ghosts = int(math.ceil(6 / 2))
+        # Scatter plot
+        plt.scatter(
+            input_positions[:, :, 4, 0],
+            input_positions[:, :, 4, 1],
+            label="Input",
+            color="blue",
+            marker="o",
+        )
 
-import time
+        plt.scatter(
+            positions[:, :, 4, 0],
+            positions[:, :, 4, 1],
+            label="Interpolated",
+            color="red",
+            marker="x",
+        )
+
+        plt.legend(loc="upper center", bbox_to_anchor=(0.5, 1.10), ncol=2)
+        plt.xticks(input_positions[:, 0, 4, 0])
+        plt.yticks(input_positions[0, :, 4, 1])
+        plt.xlabel("X Position")
+        plt.ylabel("Y Position")
+        plt.grid(True)
+        plt.savefig(f"interpolation_grid.png")
+        plt.close()
+
 
 if __name__ == "__main__":
     print_grid_lay_out()
     interpolation = interp(6, 3)
-    length = 10
-    dx = 0.01
-    x = torch.rand(
-        2, 25, length, length, length
-    )  # .random(10,25,length, length, length)
-    for i in range(x.shape[2]):
-        for j in range(x.shape[3]):
-            for k in range(x.shape[4]):
-                pos = dx * np.array([i, j, k])
-                x[:, :, i, j, k] = sinusoidal_function(*pos)
-    time1 = time.time()
-    interpolated, positions = interpolation(x)
-    print(f"Time taken for interpolation: {(time.time() - time1):.2f} sec")
-    ghosts = int(math.ceil(6 / 2))
-
-    print(interpolated.shape)
-    plt.subplot(1, 2, 1)
-    plt.title("interpolated")
-    plt.imshow(interpolated[0, 0, :, :, 4].numpy())
-    plt.colorbar()
-    plt.subplot(1, 2, 2)
-    plt.title("original")
-    plt.imshow(x[0, 0, ghosts:-ghosts, ghosts:-ghosts, 2].numpy())
-    plt.colorbar()
-    plt.show()
-    print(positions.shape)
-    plt.scatter(positions[:,4, 4,0].numpy(),interpolated[0, 0, :, 4, 4].numpy(), label="interpolated")
-    plt.scatter(np.arange(ghosts,length-ghosts),x[0, 0, ghosts:-ghosts, 4, 4].numpy(), label="original")
-
-    plt.legend()
-    plt.show()
-
-    plt.scatter(positions[:, :, 4, 0].numpy(),positions[:, :, 4, 1].numpy())
-    plt.show()
+    interpolation.plot_grid_position()
