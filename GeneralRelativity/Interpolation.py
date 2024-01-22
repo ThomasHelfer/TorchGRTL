@@ -152,20 +152,27 @@ class interp:
         self.vecvals_array = []  # Vector values for interpolation
         self.grid_points_index_array = []  # Grid points indices for interpolation
 
-        if not align_grids_with_lower_dim_values:
-            # Define fixed values for grid alignment
+        # Define fixed values for grid alignment
+        if align_grids_with_lower_dim_values:
+            values = [0.0, 0.50]
+        else:
             values = [0.25, 0.75]
-            self.relative_positions = np.array(
-                list(itertools.product(values, repeat=3))
+        self.relative_positions = np.array(list(itertools.product(values, repeat=3)))
+
+        # Calculate vector values and grid points indices
+        for interp_point in self.relative_positions:
+            vecvals, grid_points_index = calculate_stencils(interp_point, 4, 3)
+            vecvals[np.abs(vecvals) < 1e-10] = 0
+            self.vecvals_array.append(vecvals.tolist())
+            self.grid_points_index_array.append(grid_points_index.tolist())
+
+        # Compute relative indices for interpolated array
+
+        if align_grids_with_lower_dim_values:
+            self.relative_index_for_interpolated_array = np.int8(
+                np.round(self.relative_positions + 0.5)
             )
-
-            # Calculate vector values and grid points indices
-            for interp_point in self.relative_positions:
-                vecvals, grid_points_index = calculate_stencils(interp_point, 4, 3)
-                self.vecvals_array.append(vecvals.tolist())
-                self.grid_points_index_array.append(grid_points_index.tolist())
-
-            # Compute relative indices for interpolated array
+        else:
             self.relative_index_for_interpolated_array = np.int8(
                 np.round(self.relative_positions)
             )
@@ -271,7 +278,6 @@ class interp:
             color="blue",
             marker="o",
         )
-
         plt.scatter(
             positions[:, :, 4, 0],
             positions[:, :, 4, 1],
