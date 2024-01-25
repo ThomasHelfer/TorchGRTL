@@ -101,7 +101,7 @@ def test_interpolation_on_grid():
         time1 = time.time()
         interpolated = interpolation(x)
         print(f"Time taken for interpolation: {(time.time() - time1):.2f} sec")
-        positions = self.get_postion(x)
+        positions = interpolation.get_postion(x)
 
         # Preparing ground truth for comparison
         ghosts = int(math.ceil(6 / 2))
