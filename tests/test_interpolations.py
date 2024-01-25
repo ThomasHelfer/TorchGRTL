@@ -79,52 +79,54 @@ def test_interpolation_on_grid():
     length (int): Length of each dimension in the grid.
     dx (float): Differential step to scale the grid positions.
     """
-    tol = 1e-10
-    interpolation = interp(6, 3)
-    length = 10
-    dx = 0.01
+    for centering in [True, False]:
+        tol = 1e-10
+        interpolation = interp(6, 3, centering)
+        length = 10
+        dx = 0.01
 
-    # Initializing a tensor of random values to represent the grid
-    x = torch.rand(2, 25, length, length, length)
+        # Initializing a tensor of random values to represent the grid
+        x = torch.rand(2, 25, length, length, length)
 
-    # Preparing input positions for the sinusoidal function
-    input_positions = torch.zeros(length, length, length, 3)
-    for i in range(x.shape[2]):
-        for j in range(x.shape[3]):
-            for k in range(x.shape[4]):
-                input_positions[i, j, k] = torch.tensor([i, j, k])
-                pos = dx * np.array([i, j, k])
-                x[:, :, i, j, k] = sinusoidal_function(*pos)
+        # Preparing input positions for the sinusoidal function
+        input_positions = torch.zeros(length, length, length, 3)
+        for i in range(x.shape[2]):
+            for j in range(x.shape[3]):
+                for k in range(x.shape[4]):
+                    input_positions[i, j, k] = torch.tensor([i, j, k])
+                    pos = dx * np.array([i, j, k])
+                    x[:, :, i, j, k] = sinusoidal_function(*pos)
 
-    # Perform interpolation and measure time taken
-    time1 = time.time()
-    interpolated, positions = interpolation(x)
-    print(f"Time taken for interpolation: {(time.time() - time1):.2f} sec")
+        # Perform interpolation and measure time taken
+        time1 = time.time()
+        interpolated = interpolation(x)
+        print(f"Time taken for interpolation: {(time.time() - time1):.2f} sec")
+        positions = self.get_postion(x)
 
-    # Preparing ground truth for comparison
-    ghosts = int(math.ceil(6 / 2))
-    shape = x.shape
-    ground_truth = torch.zeros(
-        shape[0],
-        shape[1],
-        (shape[2] - 2 * ghosts) * 2 + 2,
-        (shape[3] - 2 * ghosts) * 2 + 2,
-        (shape[4] - 2 * ghosts) * 2 + 2,
-    )
+        # Preparing ground truth for comparison
+        ghosts = int(math.ceil(6 / 2))
+        shape = x.shape
+        ground_truth = torch.zeros(
+            shape[0],
+            shape[1],
+            (shape[2] - 2 * ghosts) * 2 + 2,
+            (shape[3] - 2 * ghosts) * 2 + 2,
+            (shape[4] - 2 * ghosts) * 2 + 2,
+        )
 
-    # Applying sinusoidal function to the interpolated positions
+        # Applying sinusoidal function to the interpolated positions
 
-    shape = ground_truth.shape
-    # Perform interpolation
-    for i in range(shape[2]):
-        for j in range(shape[3]):
-            for k in range(shape[4]):
-                pos = dx * (positions[i, j, k])
-                ground_truth[:, :, i, j, k] = sinusoidal_function(*pos)
+        shape = ground_truth.shape
+        # Perform interpolation
+        for i in range(shape[2]):
+            for j in range(shape[3]):
+                for k in range(shape[4]):
+                    pos = dx * (positions[i, j, k])
+                    ground_truth[:, :, i, j, k] = sinusoidal_function(*pos)
 
-    assert (
-        torch.mean(torch.abs(interpolated[0, 0, ...] - ground_truth[0, 0, ...]))
-    ) < tol
+        assert (
+            torch.mean(torch.abs(interpolated[0, 0, ...] - ground_truth[0, 0, ...]))
+        ) < tol
 
 
 if __name__ == "__main__":
