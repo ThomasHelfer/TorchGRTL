@@ -29,7 +29,6 @@ Before installing TorchGRTL, ensure you have the following prerequisites:
 2. Install the package:
 
    ```bash
-   Copy code
    pip install .
    ```
 3. (Optional) Set up pre-commit hooks for code formatting and linting:
