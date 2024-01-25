@@ -161,7 +161,7 @@ class interp:
 
         # Calculate vector values and grid points indices
         for interp_point in self.relative_positions:
-            vecvals, grid_points_index = calculate_stencils(interp_point, 4, 3)
+            vecvals, grid_points_index = calculate_stencils(interp_point, num_points, max_degree)
             vecvals[np.abs(vecvals) < 1e-10] = 0
             self.vecvals_array.append(vecvals.tolist())
             self.grid_points_index_array.append(grid_points_index.tolist())
@@ -214,9 +214,9 @@ class interp:
         )
 
         # Perform interpolation
-        for i in range(ghosts - 1, shape[2] - ghosts):
-            for j in range(ghosts - 1, shape[3] - ghosts):
-                for k in range(ghosts - 1, shape[4] - ghosts):
+        for i in range(ghosts - 1, shape[2] - ghosts-1):
+            for j in range(ghosts - 1, shape[3] - ghosts-1):
+                for k in range(ghosts - 1, shape[4] - ghosts-1):
                     index_for_input_array = torch.tensor([i, j, k])
                     for (
                         displacements,
