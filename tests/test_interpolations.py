@@ -81,12 +81,13 @@ def test_interpolation_on_grid():
     """
     for centering in [True, False]:
         tol = 1e-10
-        interpolation = interp(6, 3, centering)
+        channels = 25
+        interpolation = interp(6, 3, centering,channels)
         length = 10
         dx = 0.01
 
         # Initializing a tensor of random values to represent the grid
-        x = torch.rand(2, 25, length, length, length)
+        x = torch.rand(2, channels, length, length, length)
 
         # Preparing input positions for the sinusoidal function
         input_positions = torch.zeros(length, length, length, 3)
