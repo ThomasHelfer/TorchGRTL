@@ -334,7 +334,7 @@ class interp:
                         )
                         # This array gives the position of the interpolated point in the interpolated array relative to the input array
                         position[ind[0], ind[1], ind[2]] = (
-                            index_for_input_array + relative_position
+                            index_for_input_array + relative_position + 1 
                         )
 
         return position
@@ -456,6 +456,13 @@ class interp:
         plt.savefig(f"interpolation_grid.png")
         plt.close()
 
+
+        plt.subplot(1,2,1)
+        plt.imshow(interpolated[0,0,:,:,4])
+        plt.subplot(1,2,2)
+        interpolated,_ = self.non_vector_implementation(x)
+        plt.imshow(interpolated[0,0,:,:,4])
+        plt.savefig(f"interpolation_results.png")
 
 if __name__ == "__main__":
     print_grid_lay_out()
