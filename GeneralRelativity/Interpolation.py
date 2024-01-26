@@ -159,6 +159,7 @@ class interp:
         self.max_degree = max_degree
         self.vecvals_array = []  # Vector values for interpolation
         self.grid_points_index_array = []  # Grid points indices for interpolation
+        self.num_channels=num_channels
 
         # Define fixed values for grid alignment
         if align_grids_with_lower_dim_values:
@@ -204,7 +205,7 @@ class interp:
 
             # Create a convolutional kernel with zeros
             kernel = torch.zeros(
-                (num_channels, 1, kernel_size, kernel_size, kernel_size)
+                (num_channels,num_channels, kernel_size, kernel_size, kernel_size)
             )
 
             # Find the minimum index for displacements to adjust kernel indexing
@@ -417,7 +418,7 @@ class interp:
     def plot_grid_position(self):
         length = 10
         dx = 0.01
-        x = torch.rand(2, 1, length, length, length)
+        x = torch.rand(2, self.num_channels, length, length, length)
         input_positions = torch.zeros(length, length, length, 3)
         for i in range(x.shape[2]):
             for j in range(x.shape[3]):
@@ -458,5 +459,5 @@ class interp:
 
 if __name__ == "__main__":
     print_grid_lay_out()
-    interpolation = interp(6, 3)
+    interpolation = interp(6, 3, 25)
     interpolation.plot_grid_position()
