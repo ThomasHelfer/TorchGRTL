@@ -268,16 +268,10 @@ class interp:
         )
 
         for (
-            displacements,
-            weights,
             relative_index,
-            relative_position,
             conv_layer,
         ) in zip(
-            self.grid_points_index_array,
-            self.vecvals_array,
             self.relative_index_for_interpolated_array,
-            self.relative_positions,
             self.conv_layers,
         ):
             convoluted_tensor = conv_layer(tensor)
@@ -371,14 +365,6 @@ class interp:
             (shape[4] - 2 * ghosts) * 2 + 2,
         )
 
-        # Initialize a tensor to store positions
-        position = torch.zeros(
-            (shape[2] - 2 * ghosts) * 2 + 2,
-            (shape[3] - 2 * ghosts) * 2 + 2,
-            (shape[4] - 2 * ghosts) * 2 + 2,
-            3,
-        )
-
         # Perform interpolation
         for i in range(ghosts - 1, shape[2] - ghosts):
             for j in range(ghosts - 1, shape[3] - ghosts):
@@ -409,11 +395,8 @@ class interp:
                         )
                         interpolation[:, :, ind[0], ind[1], ind[2]] = result
                         # This array gives the position of the interpolated point in the interpolated array relative to the input array
-                        position[ind[0], ind[1], ind[2]] = (
-                            index_for_input_array + relative_position
-                        )
 
-        return interpolation, position
+        return interpolation
 
     def sinusoidal_function(self, x, y, z):
         """
@@ -462,10 +445,7 @@ class interp:
         plt.savefig(f"interpolation_grid.png")
         plt.close()
 
-        interpolated_old, _ = self.non_vector_implementation(x)
-        plt.plot(interpolated_old[0, 0, 4, :, 4] - interpolated[0, 0, 4, :, 4])
-        print(torch.mean(torch.abs(interpolated_old - interpolated)))
-        plt.savefig(f"interpolation_results.png")
+
 
 
 def sinusoidal_function(x, y, z):

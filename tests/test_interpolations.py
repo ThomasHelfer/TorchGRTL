@@ -107,6 +107,7 @@ def test_interpolation_on_grid():
         # Perform interpolation and measure time taken
         time1 = time.time()
         interpolated = interpolation(x)
+        interpolated_old = interpolation.non_vector_implementation(x)
         print(f"Time taken for interpolation: {(time.time() - time1):.2f} sec")
         positions = interpolation.get_postion(x)
 
@@ -131,9 +132,14 @@ def test_interpolation_on_grid():
                     pos = dx * (positions[i, j, k])
                     ground_truth[:, :, i, j, k] = sinusoidal_function(*pos)
 
+        # Comparing interpolated and ground truth values
         assert (
             torch.mean(torch.abs(interpolated[0, 0, ...] - ground_truth[0, 0, ...]))
         ) < tol
+
+        # Comparing old and new interpolation
+        assert(torch.mean(torch.abs(interpolated_old - interpolated))< tol)
+
 
 
 if __name__ == "__main__":
