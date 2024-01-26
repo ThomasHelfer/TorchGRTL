@@ -85,7 +85,7 @@ def test_interpolation_on_grid():
         interpolation = interp(
             num_points=6,
             max_degree=3,
-            num_channels=1,
+            num_channels=channels,
             learnable=False,
             align_grids_with_lower_dim_values=centering,
         )
