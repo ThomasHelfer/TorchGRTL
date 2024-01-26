@@ -82,7 +82,13 @@ def test_interpolation_on_grid():
     for centering in [True, False]:
         tol = 1e-10
         channels = 25
-        interpolation = interp(6, 3, centering,channels)
+        interpolation = interp(
+            num_points=6,
+            max_degree=3,
+            num_channels=1,
+            learnable=False,
+            align_grids_with_lower_dim_values=centering,
+        )
         length = 10
         dx = 0.01
 
