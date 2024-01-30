@@ -4,7 +4,7 @@ import itertools
 import torch
 import math
 import time
-from typing import Tuple
+from typing import Tuple, Type
 import torch.nn as nn
 
 
@@ -150,7 +150,7 @@ class interp:
         num_channels: int = 1,
         learnable: bool = False,
         align_grids_with_lower_dim_values: bool = False,
-        dtype: Type[torch.dtype] = torch.double,
+        dtype: Type[torch.dtype] = torch.float,
     ):
         """
         Initialize the Interp class.
