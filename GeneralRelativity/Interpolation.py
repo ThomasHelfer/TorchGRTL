@@ -150,6 +150,7 @@ class interp:
         num_channels: int = 1,
         learnable: bool = False,
         align_grids_with_lower_dim_values: bool = False,
+        dtype: Type[torch.dtype] = torch.double,
     ):
         """
         Initialize the Interp class.
@@ -212,7 +213,7 @@ class interp:
 
             # Create a convolutional kernel with zeros
             kernel = torch.zeros(
-                (num_channels, 1, kernel_size, kernel_size, kernel_size)
+                (num_channels, 1, kernel_size, kernel_size, kernel_size), dtype=dtype
             )
 
             # Find the minimum index for displacements to adjust kernel indexing
@@ -444,8 +445,6 @@ class interp:
         plt.grid(True)
         plt.savefig(f"interpolation_grid.png")
         plt.close()
-
-
 
 
 def sinusoidal_function(x, y, z):
