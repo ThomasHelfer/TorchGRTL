@@ -4,6 +4,8 @@ import numpy as np
 import time
 import sys
 import os
+import argparse
+import shutil
 import matplotlib.pylab as plt
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
@@ -36,8 +38,6 @@ from torch.utils.data import TensorDataset, DataLoader
 
 time_stamp = int(time.time())
 
-import argparse
-
 
 def main():
     default_job_id = "local_run"
@@ -55,6 +55,10 @@ def main():
 
     else:
         print(f"Folder '{folder_name}' already exists.")
+
+    # copy code into folder for reproducibility
+    shutil.copy("learn_model.py", folder_name)
+    print(f"Copied script to '{folder_name}'.")
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print("Executing the model on :", device)
@@ -183,7 +187,7 @@ def main():
     net.to(device)
 
     my_loss = torch.nn.L1Loss()
-
+    print("training")
     pbar = trange(n_steps)
     for i in pbar:
         batchcounter = 0
@@ -259,6 +263,198 @@ def main():
 
     writer.flush()
     writer.close()
+
+    # Get comparison with classical methods
+
+    # Interpolation compared to what is used typically in codes ( we interpolate between 6 values with polynomials x^i y^k z^k containing powers up to 3)
+    points = 6
+    power = 3
+    channels = 25
+    shape = X_batch.shape
+    interpolation = interp(points, power, channels, False, True, torch.double)
+    ghosts = int(math.ceil(points / 2))
+    shape_higher_order = (shape[-1] - 2 * ghosts) * 2 + 2
+
+    y_interpolated = interpolation(X_batch.detach().cpu()).detach().to(torch.double)
+    y_interpolated_buffer = torch.zeros_like(y_batch.detach())
+    diff = (y_batch.shape[-1] - y_interpolated.shape[-1]) // 2
+    y_interpolated_buffer[:, :, diff:-diff, diff:-diff, diff:-diff] = y_interpolated
+
+    box = 0
+    channel = 0
+    slice = 9
+    # Note we remove some part of the grid as the interpolation needs space
+    max_val = (
+        torch.max(
+            y_batch[box, channel, diff - 1 : -diff - 1, diff - 1 : -diff - 1, slice - 1]
+        )
+        .cpu()
+        .numpy()
+    )
+    min_val = (
+        torch.min(
+            y_batch[box, channel, diff - 1 : -diff - 1, diff - 1 : -diff - 1, slice - 1]
+        )
+        .cpu()
+        .numpy()
+    )
+    net.eval()
+    y_pred = net(X_batch.detach())
+
+    # Create subplots
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+
+    # Plot ground truth
+    axes[0].set_title("Ground Truth")
+    im0 = axes[0].imshow(
+        y_batch[box, channel, diff - 1 : -diff - 1, diff - 1 : -diff - 1, slice - 1]
+        .cpu()
+        .numpy(),
+        vmin=min_val,
+        vmax=max_val,
+        cmap="viridis",
+    )
+    axes[0].set_xlabel("X-axis")
+    axes[0].set_ylabel("Y-axis")
+
+    # Plot Neural Network
+    axes[1].set_title("Neural Network")
+    im1 = axes[1].imshow(
+        y_pred[box, channel, diff - 1 : -diff - 1, diff - 1 : -diff - 1, slice - 1]
+        .detach()
+        .cpu()
+        .numpy(),
+        vmin=min_val,
+        vmax=max_val,
+        cmap="viridis",
+    )
+    axes[1].set_xlabel("X-axis")
+    axes[1].set_ylabel("Y-axis")
+
+    # Plot Interpolation
+    axes[2].set_title("Interpolation")
+    im2 = axes[2].imshow(
+        y_interpolated[box, channel, :, :, slice - diff],
+        vmin=min_val,
+        vmax=max_val,
+        cmap="viridis",
+    )
+    axes[2].set_xlabel("X-axis")
+    axes[2].set_ylabel("Y-axis")
+
+    # Add colorbars
+    cbar0 = fig.colorbar(im0, ax=axes[0])
+    # cbar0.set_label('Values')
+    cbar1 = fig.colorbar(im1, ax=axes[1])
+    # cbar1.set_label('Values')
+    cbar2 = fig.colorbar(im2, ax=axes[2])
+    # cbar2.set_label('Values')
+    plt.tight_layout()
+    plt.savefig(folder_name + "/comparison2d.png")
+
+    box = 2
+    channel = 0
+    slice = 5
+
+    net.eval()
+    y_pred = net(X_batch.detach())
+
+    plt.plot(
+        y_batch[box, channel, diff - 1 : -diff - 1, slice - 1, slice - 1]
+        .detach()
+        .cpu()
+        .numpy(),
+        label="ground truth",
+    )
+    plt.plot(
+        y_pred[box, channel, diff - 1 : -diff - 1, slice - 1, slice - 1]
+        .detach()
+        .cpu()
+        .numpy(),
+        label="neural network ",
+    )
+    plt.plot(
+        y_interpolated[box, channel, :, slice - diff, slice - diff]
+        .detach()
+        .cpu()
+        .numpy(),
+        label="interpolation ",
+        linestyle=":",
+        alpha=0.6,
+    )
+    plt.legend()
+    plt.savefig(folder_name + "/comparison1d.png")
+
+    box = 5
+    channel = 0
+    slice = 5
+
+    net.eval()
+    y_pred = net(X_batch.detach())
+
+    plt.plot(
+        np.abs(
+            y_batch[box, channel, diff - 1 : -diff - 1, slice - 1, slice - 1]
+            .detach()
+            .cpu()
+            .numpy()
+            - y_pred[box, channel, diff - 1 : -diff - 1, slice - 1, slice - 1]
+            .detach()
+            .cpu()
+            .numpy()
+        ),
+        label="neural network residual ",
+    )
+    plt.plot(
+        np.abs(
+            y_batch[box, channel, diff - 1 : -diff - 1, slice - 1, slice - 1]
+            .detach()
+            .cpu()
+            .numpy()
+            - y_interpolated[box, channel, :, slice - diff, slice - diff]
+            .detach()
+            .cpu()
+            .numpy()
+        ),
+        label="interpolation residual",
+        linestyle=":",
+        alpha=0.6,
+    )
+    plt.yscale("log")
+    plt.legend()
+    plt.savefig(folder_name + "/residual.png")
+
+    # Calculate L2Ham performance
+    my_loss = Hamiltonian_loss(oneoverdx)
+
+    net.eval()
+    y_pred = net(X_batch.detach())
+
+    with open(folder_name + "/Metric_data.txt", "a") as file:
+        file.write(
+            f"Reference data L2 Ham {my_loss(y_batch[:, :, diff-1:-diff-1, diff-1:-diff-1, diff-1:-diff-1], torch.tensor([])).detach().cpu().numpy()}\n"
+        )
+        file.write(
+            f"Neural Network L2 Ham {my_loss(y_pred[:, :, diff-1:-diff-1, diff-1:-diff-1, diff-1:-diff-1], torch.tensor([])).detach().cpu().numpy()}\n"
+        )
+        file.write(
+            f"Interpolation L2 Ham  {my_loss(y_interpolated, torch.tensor([])).detach().numpy()}\n"
+        )
+        file.write("--------------------\n")
+
+    # Calculate L1 performance
+    my_loss = torch.nn.L1Loss()
+
+    net.eval()
+    y_pred = net(X_batch.detach())
+
+    with open(folder_name + "/Metric_data.txt", "a") as file:
+        file.write(
+            f"L1 loss Neural Network {my_loss(y_pred[:, :, diff-1:-diff-1, diff-1:-diff-1, diff-1:-diff-1].cpu(), y_batch[:, :, diff-1:-diff-1, diff-1:-diff-1, diff-1:-diff-1].cpu())}\n"
+        )
+        file.write(
+            f"L1 loss interpolation {my_loss(y_interpolated.cpu(), y_batch[:, :, diff-1:-diff-1, diff-1:-diff-1, diff-1:-diff-1].cpu())}\n"
+        )
 
 
 if __name__ == "__main__":

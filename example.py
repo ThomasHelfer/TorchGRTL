@@ -1,7 +1,18 @@
-from GeneralRelativity.Utils import get_box_format, TensorDict, cut_ghosts, keys, keys_all
+from GeneralRelativity.Utils import (
+    get_box_format,
+    TensorDict,
+    cut_ghosts,
+    keys,
+    keys_all,
+)
 from GeneralRelativity.DimensionDefinitions import FOR1, FOR2, FOR3, FOR4
 from GeneralRelativity.FourthOrderDerivatives import diff1, diff2
-from GeneralRelativity.TensorAlgebra import compute_christoffel, compute_trace, compute_christoffel_fast, raise_all
+from GeneralRelativity.TensorAlgebra import (
+    compute_christoffel,
+    compute_trace,
+    compute_christoffel_fast,
+    raise_all,
+)
 from GeneralRelativity.CCZ4Geometry import compute_ricci
 from GeneralRelativity.Constraints import constraint_equations
 import matplotlib.pyplot as plt
@@ -23,15 +34,15 @@ d1 = TensorDict(diff1(dataX, oneoverdx), keys_all)
 d2 = TensorDict(diff2(dataX, oneoverdx**2), keys_all)
 
 # Compute the inverse metric tensor and Christoffel symbols
-h_UU = torch.inverse(vars['h'])
-chris = compute_christoffel(d1['h'], h_UU)
-chrisref = compute_christoffel_fast(d1['h'], h_UU)
+h_UU = torch.inverse(vars["h"])
+chris = compute_christoffel(d1["h"], h_UU)
+chrisref = compute_christoffel_fast(d1["h"], h_UU)
 
 # Calculate constraints based on the variables and their derivatives
 out = constraint_equations(vars, d1, d2, h_UU, chris)
 
 # Extract the data for plotting
-ham_data = out['Ham'][0, 6, ...]
+ham_data = out["Ham"][0, 6, ...]
 
 # Create a meshgrid for the x and y axes
 nx, ny = ham_data.shape
@@ -41,9 +52,9 @@ X, Y = np.meshgrid(x, y)
 
 # Plotting
 plt.figure(figsize=(8, 6))  # Set the figure size
-plt.pcolormesh(X, Y, ham_data, cmap='viridis', shading='auto')
-plt.colorbar(label='Hamiltonian Constraint')  # Adds a color bar with a label
-plt.title('Hamiltonian Constraint Visualization')
-plt.xlabel('X (M)')
-plt.ylabel('Y (M)')
-plt.savefig('ham.png')
+plt.pcolormesh(X, Y, ham_data, cmap="viridis", shading="auto")
+plt.colorbar(label="Hamiltonian Constraint")  # Adds a color bar with a label
+plt.title("Hamiltonian Constraint Visualization")
+plt.xlabel("X (M)")
+plt.ylabel("Y (M)")
+plt.savefig("ham.png")
