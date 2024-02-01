@@ -75,7 +75,7 @@ def main():
             self.points = 6
             self.power = 3
             self.channels = 25
-            self.interpolation = interp(self.points, self.power, self.channels, True, True, torch.double)
+            self.interpolation = interp(self.points, self.power, self.channels, False, True, torch.double)
 
             # Encoder
             # The encoder consists of two 3D convolutional layers.
@@ -85,7 +85,11 @@ def main():
             self.encoder = torch.nn.Sequential(
                 torch.nn.Conv3d(25, 64, kernel_size=3, padding=1),
                 torch.nn.ReLU(inplace=True),
-                torch.nn.Conv3d(64, 128, kernel_size=3, padding=1),
+                torch.nn.Conv3d(64, 64, kernel_size=3, padding=1),
+                torch.nn.ReLU(inplace=True),
+                torch.nn.Conv3d(64, 64, kernel_size=3, padding=1),
+                torch.nn.ReLU(inplace=True),
+                torch.nn.Conv3d(64, 25, kernel_size=3, padding=1),
                 torch.nn.ReLU(inplace=True),
             )
 
@@ -104,19 +108,21 @@ def main():
             # x is the input tensor
 
             # Save the original input for later use
-            tmp = x
 
             # Apply the encoder
-            x = self.encoder(x)
+            #x = self.encoder(x)
 
             # Apply the decoder
-            x = self.decoder(x)
+            #x = self.decoder(x)
 
             # Reusing the input data for faster learning
             # Here, every 2nd element in the spatial dimensions of x is replaced by the corresponding element in the original input.
             # This is a form of skip connection, which helps in retaining high-frequency details from the input.
 
-            x = self.interpolation(tmp)
+            x = self.interpolation(x)
+            tmp = x.to(float)
+            x = self.encoder(tmp)
+
 
             return x
 
