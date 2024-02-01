@@ -221,7 +221,7 @@ class interp:
             ).to(device)
 
             # Find the minimum index for displacements to adjust kernel indexing
-            min_index = torch.min(displacements)
+            min_index = torch.min(displacements).to(device)
 
             # Populate the kernel with weights according to displacements
             for displacement, weight in zip(displacements, weights):
