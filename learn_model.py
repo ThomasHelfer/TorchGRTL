@@ -181,7 +181,7 @@ def main():
 
     # Note: it will slow down signficantly with BFGS steps, they are 10x slower, just be aware!
     ADAMsteps = 400  # Will perform # steps of ADAM steps and then switch over to BFGS-L
-    n_steps = 100  # Total amount of steps
+    n_steps = 5  # Total amount of steps
 
     net.train()
     net.to(device)
@@ -234,7 +234,7 @@ def main():
         counter += 1
         # Validation
 
-        if counter % 1 == 0:
+        if counter % 4 == 0:
             with torch.no_grad():
                 # for X_val_batch, y_val_batch in test_loader:
                 # Transfer batch to GPU
@@ -249,7 +249,7 @@ def main():
             # Writing out network and scaler
             torch.save(
                 net.state_dict(),
-                f"model_epoch_counter_{counter:010d}_data_time_{time_stamp}.pth",
+                f"{folder_name}/model_epoch_counter_{counter:010d}_data_time_{time_stamp}.pth",
             )
 
     # Plotting shit at the end
@@ -351,6 +351,7 @@ def main():
     # cbar2.set_label('Values')
     plt.tight_layout()
     plt.savefig(folder_name + "/comparison2d.png")
+    plt.close()
 
     box = 2
     channel = 0
@@ -384,6 +385,7 @@ def main():
     )
     plt.legend()
     plt.savefig(folder_name + "/comparison1d.png")
+    plt.close()
 
     box = 5
     channel = 0
@@ -423,6 +425,7 @@ def main():
     plt.yscale("log")
     plt.legend()
     plt.savefig(folder_name + "/residual.png")
+    plt.close()
 
     # Calculate L2Ham performance
     my_loss = Hamiltonian_loss(oneoverdx)
