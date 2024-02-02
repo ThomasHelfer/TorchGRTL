@@ -20,7 +20,6 @@ Seamless Integration with Machine Learning:
 
 Bridging the gap: 
  - Effortlessly incorporate general relativity calculations into your machine learning workflows, unlocking a universe of possibilities for interdisciplinary research.
-Built on a Foundation of Reliability:
 
 Confidence through testing: 
  - Trust in the codebase's robustness and accuracy, as it's rigorously developed and maintained using test-driven development practices.
