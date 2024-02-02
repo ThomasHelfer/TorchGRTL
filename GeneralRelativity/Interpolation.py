@@ -142,7 +142,7 @@ def calculate_stencils(
     return vecvals, coarse_grid_points_index
 
 
-class interp:
+class interp(torch.nn.Module):
     def __init__(
         self,
         num_points: int = 6,
@@ -151,8 +151,7 @@ class interp:
         learnable: bool = False,
         align_grids_with_lower_dim_values: bool = False,
         dtype: Type[torch.dtype] = torch.float,
-        device: str = 'cpu',
-
+        device: str = "cpu",
     ):
         """
         Initialize the Interp class.
@@ -166,6 +165,7 @@ class interp:
         dtype (torch.dtype): dtype of weights, defaults to float
         device (str): defaults to 'cpu'
         """
+        super(interp, self).__init__()
         self.num_points = num_points
         self.max_degree = max_degree
         self.vecvals_array = []  # Vector values for interpolation
@@ -236,8 +236,9 @@ class interp:
             conv_layer.weight = nn.Parameter(kernel)
             conv_layer.weight.requires_grad = learnable
             self.conv_layers.append(conv_layer)
+        self.conv_layers = nn.ModuleList(self.conv_layers)
 
-    def __call__(self, tensor: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, tensor: torch.Tensor) -> torch.Tensor:
         """
         Perform the interpolation on the given tensor.
 
@@ -247,11 +248,12 @@ class interp:
         Returns:
         Tuple[torch.Tensor, torch.Tensor]: A tuple containing the interpolated tensor and the position tensor.
         """
-
         # Calculate the number of ghost points based on num_points
         # Ghost points are used for padding or handling edges during interpolation
         ghosts = int(math.ceil(self.num_points / 2))
         shape = tensor.shape
+        dtype = tensor.dtype
+        device = tensor.device
 
         # Initialize the tensor for storing interpolation results
         # The output tensor will have modified spatial dimensions based on the number of ghost points
@@ -261,15 +263,8 @@ class interp:
             (shape[2] - 2 * ghosts) * 2 + 2,  # modified x dimension
             (shape[3] - 2 * ghosts) * 2 + 2,  # modified y dimension
             (shape[4] - 2 * ghosts) * 2 + 2,  # modified z dimension
-        )
-
-        # Initialize a tensor to store positions
-        # This tensor keeps track of the positions in the interpolated space
-        position = torch.zeros(
-            (shape[2] - 2 * ghosts) * 2 + 2,  # x dimension
-            (shape[3] - 2 * ghosts) * 2 + 2,  # y dimension
-            (shape[4] - 2 * ghosts) * 2 + 2,  # z dimension
-            3,  # 3D coordinates
+            dtype=dtype,
+            device=device,
         )
 
         for (
@@ -292,7 +287,7 @@ class interp:
 
         return interpolation
 
-    def get_postion(self, tensor: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def get_postion(self, tensor: torch.Tensor) -> torch.Tensor:
         """
         Get the position of the interpolated points.
 
@@ -344,9 +339,7 @@ class interp:
 
         return position
 
-    def non_vector_implementation(
-        self, tensor: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    def non_vector_implementation(self, tensor: torch.Tensor) -> torch.Tensor:
         """
         Perform the interpolation on the given tensor.
 

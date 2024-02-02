@@ -24,9 +24,7 @@ from GeneralRelativity.Utils import (
 )
 from GeneralRelativity.FourthOrderDerivatives import diff1, diff2
 from GeneralRelativity.Interpolation import *
-from GeneralRelativity.TensorAlgebra import (
-    compute_christoffel
-)
+from GeneralRelativity.TensorAlgebra import compute_christoffel
 from GeneralRelativity.Constraints import constraint_equations
 
 from torch.utils.data import TensorDataset, DataLoader
@@ -75,7 +73,9 @@ def main():
             self.points = 6
             self.power = 3
             self.channels = 25
-            self.interpolation = interp(self.points, self.power, self.channels, False, True, torch.double)
+            self.interpolation = interp(
+                self.points, self.power, self.channels, False, True, torch.double
+            )
 
             # Encoder
             # The encoder consists of two 3D convolutional layers.
@@ -110,19 +110,18 @@ def main():
             # Save the original input for later use
 
             # Apply the encoder
-            #x = self.encoder(x)
+            # x = self.encoder(x)
 
             # Apply the decoder
-            #x = self.decoder(x)
+            # x = self.decoder(x)
 
             # Reusing the input data for faster learning
             # Here, every 2nd element in the spatial dimensions of x is replaced by the corresponding element in the original input.
             # This is a form of skip connection, which helps in retaining high-frequency details from the input.
 
             x = self.interpolation(x)
-            tmp = x.to(float)
-            x = self.encoder(tmp)
-
+            tmp = x
+            x = x + self.encoder(tmp)
 
             return x
 
@@ -130,7 +129,11 @@ def main():
     net = SuperResolution3DNet().to(torch.double)
 
     # Create a random 3D low-resolution input tensor (batch size, channels, depth, height, width)
-    input_tensor = torch.randn(1, dataX.shape[4], dataX.shape[1]//2, dataX.shape[2]//2, dataX.shape[3]//2).to(torch.double)# Adjust dimensions as needed
+    input_tensor = torch.randn(
+        1, dataX.shape[4], dataX.shape[1] // 2, dataX.shape[2] // 2, dataX.shape[3] // 2
+    ).to(
+        torch.double
+    )  # Adjust dimensions as needed
 
     # Forward pass to obtain the high-resolution output
     output_tensor = net(input_tensor)
@@ -139,7 +142,7 @@ def main():
     print("Input Shape:", dataX.shape)
     print("Output Shape:", output_tensor.shape)
 
-    diff = (dataX.shape[-2]-output_tensor.shape[-1]) // 2
+    diff = (dataX.shape[-2] - output_tensor.shape[-1]) // 2
     print(f"diff {diff}")
 
     # global step counter
@@ -151,7 +154,7 @@ def main():
     optimizerBFGS = torch.optim.LBFGS(
         net.parameters(), lr=0.1
     )  # Use LBFGS sometimes, it really does do magic sometimes, though its a bit of a diva
-    optimizerADAM = torch.optim.Adam(net.parameters(), lr=0.0001)
+    optimizerADAM = torch.optim.Adam(net.parameters(), lr=0.00001)
 
     # Define the ratio for the split (e.g., 80% train, 20% test)
     train_ratio = 0.8
@@ -200,10 +203,15 @@ def main():
 
     # Note: it will slow down signficantly with BFGS steps, they are 10x slower, just be aware!
     ADAMsteps = 400  # Will perform # steps of ADAM steps and then switch over to BFGS-L
-    n_steps = 50  # Total amount of steps
+    n_steps = 1000  # Total amount of steps
 
     net.train()
     net.to(device)
+    net.interpolation.to(device)
+
+    # for convs in net.interpolation.conv_layers:
+    #    convs.to(device)
+    #    convs.weight.to(device)
 
     my_loss = torch.nn.L1Loss()
     print("training")
@@ -213,7 +221,9 @@ def main():
         # for X_batch, y_batch in train_loader:
         y_batch = train_torch.to(device)
         X_batch = y_batch[:, :, ::2, ::2, ::2].clone()
-        y_batch = y_batch[:, :25,diff - 1 : -diff - 1,diff - 1 : -diff - 1,diff - 1 : -diff - 1]
+        y_batch = y_batch[
+            :, :25, diff - 1 : -diff - 1, diff - 1 : -diff - 1, diff - 1 : -diff - 1
+        ]
         batchcounter += 1
 
         # This is needed for LBFGS
@@ -258,7 +268,13 @@ def main():
                 # Transfer batch to GPU
                 y_val_batch = test_torch.to(device)
                 X_val_batch = y_val_batch[:, :, ::2, ::2, ::2].clone()
-                y_val_batch = y_val_batch[:, :25,diff - 1 : -diff - 1,diff - 1 : -diff - 1,diff - 1 : -diff - 1]
+                y_val_batch = y_val_batch[
+                    :,
+                    :25,
+                    diff - 1 : -diff - 1,
+                    diff - 1 : -diff - 1,
+                    diff - 1 : -diff - 1,
+                ]
                 y_val_pred = net(X_val_batch)
                 loss_val = my_loss(y_val_pred, y_val_batch)
                 losses_val.append(loss_val.item())
@@ -301,20 +317,8 @@ def main():
     channel = 0
     slice = 4
     # Note we remove some part of the grid as the interpolation needs space
-    max_val = (
-        torch.max(
-            y_batch[box, channel, : , : , slice ]
-        )
-        .cpu()
-        .numpy()
-    )
-    min_val = (
-        torch.min(
-            y_batch[box, channel, : , : , slice ]
-        )
-        .cpu()
-        .numpy()
-    )
+    max_val = torch.max(y_batch[box, channel, :, :, slice]).cpu().numpy()
+    min_val = torch.min(y_batch[box, channel, :, :, slice]).cpu().numpy()
     net.eval()
     y_pred = net(X_batch.detach())
 
@@ -324,9 +328,7 @@ def main():
     # Plot ground truth
     axes[0].set_title("Ground Truth")
     im0 = axes[0].imshow(
-        y_batch[box, channel, : , : , slice ]
-        .cpu()
-        .numpy(),
+        y_batch[box, channel, :, :, slice].cpu().numpy(),
         vmin=min_val,
         vmax=max_val,
         cmap="viridis",
@@ -337,10 +339,7 @@ def main():
     # Plot Neural Network
     axes[1].set_title("Neural Network")
     im1 = axes[1].imshow(
-        y_pred[box, channel, : , : , slice ]
-        .detach()
-        .cpu()
-        .numpy(),
+        y_pred[box, channel, :, :, slice].detach().cpu().numpy(),
         vmin=min_val,
         vmax=max_val,
         cmap="viridis",
@@ -351,7 +350,7 @@ def main():
     # Plot Interpolation
     axes[2].set_title("Interpolation")
     im2 = axes[2].imshow(
-        y_interpolated[box, channel, :, :, slice ],
+        y_interpolated[box, channel, :, :, slice],
         vmin=min_val,
         vmax=max_val,
         cmap="viridis",
@@ -378,28 +377,20 @@ def main():
     y_pred = net(X_batch.detach())
 
     plt.plot(
-        y_batch[box, channel, : , slice , slice ]
-        .detach()
-        .cpu()
-        .numpy(),
+        y_batch[box, channel, :, slice, slice].detach().cpu().numpy(),
         label="ground truth",
     )
     plt.plot(
-        y_pred[box, channel, : , slice , slice ]
-        .detach()
-        .cpu()
-        .numpy(),
+        y_pred[box, channel, :, slice, slice].detach().cpu().numpy(),
         label="neural network ",
     )
     plt.plot(
-        y_interpolated[box, channel, :, slice , slice ]
-        .detach()
-        .cpu()
-        .numpy(),
+        y_interpolated[box, channel, :, slice, slice].detach().cpu().numpy(),
         label="interpolation ",
         linestyle=":",
         alpha=0.6,
     )
+    plt.yscale("log")
     plt.legend()
     plt.savefig(folder_name + "/comparison1d.png")
     plt.close()
@@ -413,27 +404,15 @@ def main():
 
     plt.plot(
         np.abs(
-            y_batch[box, channel,:, slice , slice ]
-            .detach()
-            .cpu()
-            .numpy()
-            - y_pred[box, channel,:, slice , slice ]
-            .detach()
-            .cpu()
-            .numpy()
+            y_batch[box, channel, :, slice, slice].detach().cpu().numpy()
+            - y_pred[box, channel, :, slice, slice].detach().cpu().numpy()
         ),
         label="neural network residual ",
     )
     plt.plot(
         np.abs(
-            y_batch[box, channel, :, slice , slice ]
-            .detach()
-            .cpu()
-            .numpy()
-            - y_interpolated[box, channel, :, slice , slice ]
-            .detach()
-            .cpu()
-            .numpy()
+            y_batch[box, channel, :, slice, slice].detach().cpu().numpy()
+            - y_interpolated[box, channel, :, slice, slice].detach().cpu().numpy()
         ),
         label="interpolation residual",
         linestyle=":",
