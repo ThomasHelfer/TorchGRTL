@@ -150,6 +150,7 @@ def main():
 
     losses_train = []
     losses_val = []
+    steps_val = []
 
     optimizerBFGS = torch.optim.LBFGS(
         net.parameters(), lr=0.1
@@ -167,6 +168,23 @@ def main():
 
     train_torch = dataX[:num_train].permute(0, 4, 1, 2, 3).to(device)
     test_torch = dataX[num_train:].permute(0, 4, 1, 2, 3).to(device)
+
+    batch_size = 5
+
+    # Create DataLoader for batching -- in case data gets larger
+    train_loader = DataLoader(
+        dataset=TensorDataset(train_torch),
+        batch_size=batch_size,
+        shuffle=False,
+        pin_memory=False,
+        num_workers=0,
+    )
+    test_loader = DataLoader(
+        dataset=TensorDataset(test_torch),
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=0,
+    )
 
     # Magical loss coming from General Relativity
     class Hamiltonian_loss:
@@ -203,7 +221,7 @@ def main():
 
     # Note: it will slow down signficantly with BFGS steps, they are 10x slower, just be aware!
     ADAMsteps = 400  # Will perform # steps of ADAM steps and then switch over to BFGS-L
-    n_steps = 1000  # Total amount of steps
+    n_steps = 5  # Total amount of steps
 
     net.train()
     net.to(device)
@@ -217,79 +235,98 @@ def main():
     print("training")
     pbar = trange(n_steps)
     for i in pbar:
-        batchcounter = 0
-        # for X_batch, y_batch in train_loader:
-        y_batch = train_torch.to(device)
-        X_batch = y_batch[:, :, ::2, ::2, ::2].clone()
-        y_batch = y_batch[
-            :, :25, diff - 1 : -diff - 1, diff - 1 : -diff - 1, diff - 1 : -diff - 1
-        ]
-        batchcounter += 1
+        total_loss_train = 0
+        for (y_batch,) in train_loader:
+            batchcounter = 0
+            # for X_batch, y_batch in train_loader:
+            y_batch = train_torch.to(device)
+            X_batch = y_batch[:, :, ::2, ::2, ::2].clone()
+            y_batch = y_batch[
+                :, :25, diff - 1 : -diff - 1, diff - 1 : -diff - 1, diff - 1 : -diff - 1
+            ]
+            batchcounter += 1
 
-        # This is needed for LBFGS
-        def closure():
-            if torch.is_grad_enabled():
-                optimizerBFGS.zero_grad()
-            y_pred = net(X_batch)
+            # This is needed for LBFGS
+            def closure():
+                if torch.is_grad_enabled():
+                    optimizerBFGS.zero_grad()
+                y_pred = net(X_batch)
 
-            loss_train = my_loss(y_pred, y_batch)
-            if loss_train.requires_grad:
+                loss_train = my_loss(y_pred, y_batch)
+                if loss_train.requires_grad:
+                    loss_train.backward()
+                return loss_train
+
+            # doing some ADAM first to warm up, sometimes BFGS fuckes up if you start too early
+            if counter < ADAMsteps:
+                y_pred = net(X_batch)
+
+                loss_train = my_loss(y_pred, y_batch)
+                optimizerADAM.zero_grad()
                 loss_train.backward()
-            return loss_train
+                optimizerADAM.step()
+                # print(f'ADAM {batchcounter}')
 
-        # doing some ADAM first to warm up, sometimes BFGS fuckes up if you start too early
-        if counter < ADAMsteps:
-            y_pred = net(X_batch)
+            else:
+                optimizerBFGS.step(closure)
+                # print(f'BFGS {batchcounter}')
 
-            loss_train = my_loss(y_pred, y_batch)
-            optimizerADAM.zero_grad()
-            loss_train.backward()
-            optimizerADAM.step()
-            # print(f'ADAM {batchcounter}')
+            loss_train = closure()
+            total_loss_train += loss_train.item()
 
-        else:
-            optimizerBFGS.step(closure)
-            # print(f'BFGS {batchcounter}')
-
-        output = net(X_batch)
-        loss_train = closure()
-        writer.add_scalar("loss/train", loss_train.item(), i)
+        # Calculate the average training loss
+        average_loss_train = total_loss_train / len(train_loader)
+        # Log the average training loss
+        writer.add_scalar("loss/train", average_loss_train, counter)
+        losses_train.append(average_loss_train)
+        writer.add_scalar("loss/train", loss_train.item(), counter)
         losses_train.append(loss_train.item())
         if np.isnan(loss_train.item()):
             print("we got nans")
-        # print(loss_train.item())
-        # Advancing global counter
-        counter += 1
+
         # Validation
 
         if counter % 4 == 0:
             with torch.no_grad():
-                # for X_val_batch, y_val_batch in test_loader:
-                # Transfer batch to GPU
-                y_val_batch = test_torch.to(device)
-                X_val_batch = y_val_batch[:, :, ::2, ::2, ::2].clone()
-                y_val_batch = y_val_batch[
-                    :,
-                    :25,
-                    diff - 1 : -diff - 1,
-                    diff - 1 : -diff - 1,
-                    diff - 1 : -diff - 1,
-                ]
-                y_val_pred = net(X_val_batch)
-                loss_val = my_loss(y_val_pred, y_val_batch)
+                total_loss_val = (
+                    0.0  # Initialize a variable to accumulate the total loss
+                )
+                for (y_val_batch,) in test_loader:
+                    # for X_val_batch, y_val_batch in test_loader:
+                    # Transfer batch to GPU
+                    y_val_batch = test_torch.to(device)
+                    X_val_batch = y_val_batch[:, :, ::2, ::2, ::2].clone()
+                    y_val_batch = y_val_batch[
+                        :,
+                        :25,
+                        diff - 1 : -diff - 1,
+                        diff - 1 : -diff - 1,
+                        diff - 1 : -diff - 1,
+                    ]
+                    y_val_pred = net(X_val_batch)
+                    loss_val = my_loss(y_val_pred, y_val_batch)
+                    total_loss_val += loss_val.item()
+                # Calculate the average loss
+                average_loss_val = total_loss_val / len(test_loader)
+                losses_val.append(average_loss_val)
+                steps_val.append(i)
                 losses_val.append(loss_val.item())
-                writer.add_scalar("loss/test", loss_val.item(), i)
+                writer.add_scalar("loss/test", loss_val.item(), counter)
         if counter % 1000 == 0:
             # Writing out network and scaler
             torch.save(
                 net.state_dict(),
                 f"{folder_name}/model_epoch_counter_{counter:010d}_data_time_{time_stamp}.pth",
             )
+        # Advancing global counter
+        counter += 1
 
     # Plotting shit at the end
     plt.figure(figsize=(9, 6))
     plt.plot(np.array(losses_train), label="Train")
-    # plt.plot(np.array(losses_val), label="Val with Relative loss", linewidth=0.5)
+    plt.plot(
+        steps_val, np.array(losses_val), label="Val with Relative loss", linewidth=0.5
+    )
     plt.yscale("log")
     plt.legend()
     plt.savefig(f"{folder_name}/training.png")
