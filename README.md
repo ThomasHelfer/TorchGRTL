@@ -9,6 +9,7 @@ TorchGRTL is a Python library that provides a PyTorch-based implementation of ke
 
 ## Features
 - Efficient PyTorch-based computations for general relativity simulations.
+- Highly efficient higher-order polynomial interpolation implemented as convolutional network
 - Integration with machine learning workflows.
 
 ## Installation
