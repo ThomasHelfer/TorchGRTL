@@ -389,7 +389,7 @@ def main():
     plt.savefig(folder_name + "/comparison2d.png")
     plt.close()
 
-    box = 2
+    box = 0
     channel = 0
     slice = 5
 
@@ -423,7 +423,7 @@ def main():
     plt.savefig(folder_name + "/comparison1d.png")
     plt.close()
 
-    box = 5
+    box = 0
     channel = 0
     slice = 5
 
