@@ -160,7 +160,7 @@ def main():
     optimizerBFGS = torch.optim.LBFGS(
         net.parameters(), lr=0.1
     )  # Use LBFGS sometimes, it really does do magic sometimes, though its a bit of a diva
-    optimizerADAM = torch.optim.Adam(net.parameters(), lr=0.00001)
+    optimizerADAM = torch.optim.Adam(net.parameters(), lr=0.000001)
 
     # Define the ratio for the split (e.g., 80% train, 20% test)
     train_ratio = 0.8
@@ -225,8 +225,10 @@ def main():
     my_loss = Hamiltonian_loss(oneoverdx)
 
     # Note: it will slow down signficantly with BFGS steps, they are 10x slower, just be aware!
-    ADAMsteps = 400  # Will perform # steps of ADAM steps and then switch over to BFGS-L
-    n_steps = 600  # Total amount of steps
+    ADAMsteps = (
+        10000  # Will perform # steps of ADAM steps and then switch over to BFGS-L
+    )
+    n_steps = 10000  # Total amount of steps
 
     net.train()
     net.to(device)
@@ -250,7 +252,6 @@ def main():
                 :, :25, diff - 1 : -diff - 1, diff - 1 : -diff - 1, diff - 1 : -diff - 1
             ]
             batchcounter += 1
-            print(y_batch.shape)
 
             # This is needed for LBFGS
             def closure():
