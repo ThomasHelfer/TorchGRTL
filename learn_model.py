@@ -251,7 +251,7 @@ def main():
         # Log the average training loss
         writer.add_scalar("loss/train", average_loss_train, counter)
         losses_train.append(average_loss_train)
-        if np.isnan(loss_train.item()):
+        if np.isnan(average_loss_train):
             print("we got nans")
 
         # Validation

@@ -221,7 +221,7 @@ def main():
 
     # Note: it will slow down signficantly with BFGS steps, they are 10x slower, just be aware!
     ADAMsteps = 400  # Will perform # steps of ADAM steps and then switch over to BFGS-L
-    n_steps = 5  # Total amount of steps
+    n_steps = 600  # Total amount of steps
 
     net.train()
     net.to(device)
@@ -279,9 +279,7 @@ def main():
         # Log the average training loss
         writer.add_scalar("loss/train", average_loss_train, counter)
         losses_train.append(average_loss_train)
-        writer.add_scalar("loss/train", loss_train.item(), counter)
-        losses_train.append(loss_train.item())
-        if np.isnan(loss_train.item()):
+        if np.isnan(average_loss_train):
             print("we got nans")
 
         # Validation
@@ -309,8 +307,7 @@ def main():
                 # Calculate the average loss
                 average_loss_val = total_loss_val / len(test_loader)
                 losses_val.append(average_loss_val)
-                steps_val.append(i)
-                losses_val.append(loss_val.item())
+                steps_val.append(counter)
                 writer.add_scalar("loss/test", loss_val.item(), counter)
         if counter % 1000 == 0:
             # Writing out network and scaler
