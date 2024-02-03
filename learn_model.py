@@ -199,8 +199,10 @@ def main():
     my_loss = Hamiltonian_loss(oneoverdx)
 
     # Note: it will slow down signficantly with BFGS steps, they are 10x slower, just be aware!
-    ADAMsteps = 400  # Will perform # steps of ADAM steps and then switch over to BFGS-L
-    n_steps = 5  # Total amount of steps
+    ADAMsteps = (
+        1000  # Will perform # steps of ADAM steps and then switch over to BFGS-L
+    )
+    n_steps = 1000  # Total amount of steps
 
     net.train()
     net.to(device)
@@ -213,7 +215,7 @@ def main():
         for (y_batch,) in train_loader:
             batchcounter = 0
             # for X_batch, y_batch in train_loader:
-            y_batch = train_torch.to(device)
+            y_batch = y_batch.to(device)
             X_batch = y_batch[:, :, ::2, ::2, ::2].clone()
             y_batch = y_batch[:, :25, ...]
             batchcounter += 1
@@ -264,7 +266,7 @@ def main():
                 for (y_val_batch,) in test_loader:
                     # for X_val_batch, y_val_batch in test_loader:
                     # Transfer batch to GPU
-                    y_val_batch = test_torch.to(device)
+                    y_val_batch = y_val_batch.to(device)
                     X_val_batch = y_val_batch[:, :, ::2, ::2, ::2].clone()
                     y_val_batch = y_val_batch[:, :25]
                     y_val_pred = net(X_val_batch)

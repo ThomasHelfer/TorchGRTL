@@ -14,6 +14,8 @@ import pandas as pd
 from sklearn.metrics import r2_score
 from torch.utils.tensorboard import SummaryWriter
 from tqdm.auto import tqdm, trange
+import torch.nn.init as init
+
 
 from GeneralRelativity.Utils import (
     get_box_format,
@@ -103,21 +105,24 @@ def main():
                 torch.nn.Conv3d(64, 25, kernel_size=3, padding=1),
             )
 
+            # Initialize only the weights in self.encoder and self.decoder
+            self.initialize_encoder_decoder_weights()
+
+        def initialize_encoder_decoder_weights(self):
+            for m in [self.encoder, self.decoder]:
+                for layer in m:
+                    if isinstance(layer, torch.nn.Conv3d) or isinstance(
+                        layer, torch.nn.ConvTranspose3d
+                    ):
+                        if hasattr(layer, "weight") and layer.weight is not None:
+                            init.normal_(
+                                layer.weight, mean=0, std=1e-3
+                            )  # Adjust std as needed
+                            if layer.bias is not None:
+                                init.constant_(layer.bias, 0)
+
         def forward(self, x):
-            # Forward pass of the network
-            # x is the input tensor
-
-            # Save the original input for later use
-
-            # Apply the encoder
-            # x = self.encoder(x)
-
-            # Apply the decoder
-            # x = self.decoder(x)
-
             # Reusing the input data for faster learning
-            # Here, every 2nd element in the spatial dimensions of x is replaced by the corresponding element in the original input.
-            # This is a form of skip connection, which helps in retaining high-frequency details from the input.
 
             x = self.interpolation(x)
             tmp = x
@@ -239,12 +244,13 @@ def main():
         for (y_batch,) in train_loader:
             batchcounter = 0
             # for X_batch, y_batch in train_loader:
-            y_batch = train_torch.to(device)
+            y_batch = y_batch.to(device)
             X_batch = y_batch[:, :, ::2, ::2, ::2].clone()
             y_batch = y_batch[
                 :, :25, diff - 1 : -diff - 1, diff - 1 : -diff - 1, diff - 1 : -diff - 1
             ]
             batchcounter += 1
+            print(y_batch.shape)
 
             # This is needed for LBFGS
             def closure():
@@ -292,7 +298,7 @@ def main():
                 for (y_val_batch,) in test_loader:
                     # for X_val_batch, y_val_batch in test_loader:
                     # Transfer batch to GPU
-                    y_val_batch = test_torch.to(device)
+                    y_val_batch = y_val_batch.to(device)
                     X_val_batch = y_val_batch[:, :, ::2, ::2, ::2].clone()
                     y_val_batch = y_val_batch[
                         :,
@@ -403,7 +409,7 @@ def main():
     plt.savefig(folder_name + "/comparison2d.png")
     plt.close()
 
-    box = 2
+    box = 0
     channel = 0
     slice = 5
 
@@ -429,7 +435,7 @@ def main():
     plt.savefig(folder_name + "/comparison1d.png")
     plt.close()
 
-    box = 5
+    box = 0
     channel = 0
     slice = 5
 
