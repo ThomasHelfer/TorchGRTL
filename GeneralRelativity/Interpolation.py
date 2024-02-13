@@ -327,7 +327,6 @@ class interp(torch.nn.Module):
                         self.relative_positions,
                     ):
                         result = 0
-
                         # Writing results to the interpolated array
                         ind = 2 * (index_for_input_array - (ghosts - 1)) + (
                             relative_index
