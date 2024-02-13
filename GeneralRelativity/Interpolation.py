@@ -149,7 +149,7 @@ class interp(torch.nn.Module):
         max_degree: int = 3,
         num_channels: int = 1,
         learnable: bool = False,
-        align_grids_with_lower_dim_values: bool = False,
+        align_corners: bool = False,
         dtype: Type[torch.dtype] = torch.float,
         device: str = "cpu",
     ):
@@ -174,7 +174,7 @@ class interp(torch.nn.Module):
         tol = 1e-10  # Cutting weight values below this tolerance, assumtion is that they are just numerical noise
 
         # Define fixed values for grid alignment
-        if align_grids_with_lower_dim_values:
+        if align_corners:
             values = [0.0, 0.50]
         else:
             values = [0.25, 0.75]
@@ -191,7 +191,7 @@ class interp(torch.nn.Module):
 
         # Compute relative indices for interpolated array
 
-        if align_grids_with_lower_dim_values:
+        if align_corners:
             self.relative_index_for_interpolated_array = np.int8(
                 np.round(self.relative_positions + 0.5)
             )
@@ -413,11 +413,7 @@ class interp(torch.nn.Module):
                     input_positions[i, j, k] = torch.tensor([i, j, k])
                     pos = dx * np.array([i, j, k])
                     x[:, :, i, j, k] = self.sinusoidal_function(*pos)
-        time1 = time.time()
-        interpolated = self(x)
-        print(f"Time taken for interpolation: {(time.time() - time1):.2f} sec")
         positions = self.get_postion(x)
-        ghosts = int(math.ceil(6 / 2))
         # Scatter plot
         plt.scatter(
             input_positions[:, :, 4, 0],
@@ -453,7 +449,7 @@ def sinusoidal_function(x, y, z):
 
 if __name__ == "__main__":
     # print_grid_lay_out()
-    interpolation = interp(6, 3, 25, align_grids_with_lower_dim_values=True)
+    interpolation = interp(6, 3, 25, align_corners=True)
     interpolation.plot_grid_position()
 
     for centering in [True, False]:
@@ -464,7 +460,7 @@ if __name__ == "__main__":
             max_degree=3,
             num_channels=channels,
             learnable=False,
-            align_grids_with_lower_dim_values=centering,
+            align_corners=centering,
         )
         length = 10
         dx = 0.01
@@ -484,31 +480,8 @@ if __name__ == "__main__":
         # Perform interpolation and measure time taken
         time1 = time.time()
         interpolated, _ = interpolation.non_vector_implementation(x)
-        print(f"Time taken for interpolation: {(time.time() - time1):.2f} sec")
-        positions = interpolation.get_postion(x)
+        print(f"Default interpolation: {(time.time() - time1):.2f} sec")
 
-        # Preparing ground truth for comparison
-        ghosts = int(math.ceil(6 / 2))
-        shape = x.shape
-        ground_truth = torch.zeros(
-            shape[0],
-            shape[1],
-            (shape[2] - 2 * ghosts) * 2 + 2,
-            (shape[3] - 2 * ghosts) * 2 + 2,
-            (shape[4] - 2 * ghosts) * 2 + 2,
-        )
-
-        # Applying sinusoidal function to the interpolated positions
-
-        shape = ground_truth.shape
-        # Perform interpolation
-        for i in range(shape[2]):
-            for j in range(shape[3]):
-                for k in range(shape[4]):
-                    pos = dx * (positions[i, j, k])
-                    ground_truth[:, :, i, j, k] = sinusoidal_function(*pos)
-
-        plt.plot(ground_truth[0, 0, 4, :, 4] - interpolated[0, 0, 4, :, 4])
-        plt.savefig(f"interpolation_results{centering}.png")
-        plt.close()
-        print(torch.mean(torch.abs(interpolated[0, 0, ...] - ground_truth[0, 0, ...])))
+        time1 = time.time()
+        interpolated, _ = interpolation(x)
+        print(f"This interpolation: {(time.time() - time1):.2f} sec")

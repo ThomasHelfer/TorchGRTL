@@ -80,7 +80,7 @@ def test_interpolation_on_grid():
     dx (float): Differential step to scale the grid positions.
     """
     for centering in [True, False]:
-        for num_points in [4,6,8]:
+        for num_points in [4, 6, 8]:
             tol = 1e-9
             channels = 25
             interpolation = interp(
@@ -88,7 +88,7 @@ def test_interpolation_on_grid():
                 max_degree=num_points // 2,
                 num_channels=channels,
                 learnable=False,
-                align_grids_with_lower_dim_values=centering,
+                align_corners=centering,
             )
             length = 10
             dx = 0.01
@@ -133,9 +133,8 @@ def test_interpolation_on_grid():
                         pos = dx * (positions[i, j, k])
                         ground_truth[:, :, i, j, k] = sinusoidal_function(*pos)
 
-            print(num_points)
             # Comparing interpolated and ground truth values
-            #assert((torch.mean(torch.abs(interpolated - ground_truth))))
+            # assert((torch.mean(torch.abs(interpolated - ground_truth))))
             assert (torch.mean(torch.abs(interpolated - ground_truth))) < tol
 
             # Comparing old and new interpolation
