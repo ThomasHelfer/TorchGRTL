@@ -2,7 +2,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-red.svg)](https://opensource.org/licenses/MIT)
 
 
-# TorchGRTL
+# TorchGRTL - Numerical General Relativity in PyTorch
 <p align="center">
     <img src="https://github.com/ThomasHelfer/TorchGRTL/blob/main/img/logo_cropped.png" alt="no alignment" width="25%" height="auto"/>
 </p>
