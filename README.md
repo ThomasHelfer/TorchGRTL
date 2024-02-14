@@ -19,10 +19,6 @@ Unleash the Power of PyTorch for General Relativity:
 - Fast and seamless computations: Perform complex general relativity simulations with the efficiency and flexibility of PyTorch, a leading deep learning framework.
 High-Performance Interpolation for Precision:
 
-Accurate and efficient:
-- Achieve high-order polynomial interpolation with exceptional performance using a convolutional network architecture, ensuring precise results for your simulations.
-Seamless Integration with Machine Learning:
-
 Bridging the gap: 
  - Effortlessly incorporate general relativity calculations into your machine learning workflows, unlocking a universe of possibilities for interdisciplinary research.
 
