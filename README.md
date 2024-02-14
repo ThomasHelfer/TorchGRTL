@@ -3,6 +3,11 @@
 
 
 # TorchGRTL
+<p align="center">
+    <img src="https://github.com/ThomasHelfer/TorchGRTL/blob/main/img/logo_cropped.png" alt="no alignment" width="25%" height="auto"/>
+</p>
+
+
 
 ## Overview
 TorchGRTL is a Python library that provides a PyTorch-based implementation of key components of [GRTL codebase](https://example.com](https://github.com/GRTLCollaboration/GRChombo)) . It leverages the power of PyTorch to accelerate computations, making it suitable for machine learning applications in physics and simulation.
