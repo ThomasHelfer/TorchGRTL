@@ -196,7 +196,6 @@ def get_box_format(filenames, num_variables, boxsize=16):
     """
     tmp = get_many_binary_files(filenames, num_variables)
     tmp = torch.tensor(tmp)
-    boxsize = 16
     sizevector = tmp.shape[-1]
     numberfiles = tmp.shape[0]
     # Reshape the tensor to the specified box size
