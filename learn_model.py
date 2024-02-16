@@ -24,7 +24,7 @@ from GeneralRelativity.Utils import (
 )
 from GeneralRelativity.DimensionDefinitions import FOR1, FOR2, FOR3, FOR4
 from GeneralRelativity.FourthOrderDerivatives import diff1, diff2
-from GeneralRelativity.Interpolation import *
+from pyinterpx.Interpolation import *
 from GeneralRelativity.TensorAlgebra import (
     compute_christoffel,
     compute_trace,
@@ -68,8 +68,10 @@ def main():
     writer = SummaryWriter(f"{folder_name}")
 
     # Loading small testdata
-    filenamesX = "tests/TestData/Xdata_level0_step*"
-    num_varsX = 104
+    filenamesX = (
+        "/home/thelfer1/scr4_tedwar42/thelfer1/data_gen_binary/outputXdata_level1_*"
+    )
+    num_varsX = 100
     dataX = get_box_format(filenamesX, num_varsX)
     # Cutting out extra values added for validation
     dataX = dataX[:, :, :, :, :25]
@@ -195,7 +197,7 @@ def main():
     if restart and os.path.exists(file_path):
         net.load_state_dict(torch.load(file_path))
 
-    oneoverdx = 64.0 / 4.0
+    oneoverdx = 64.0 / 16.0
     my_loss = Hamiltonian_loss(oneoverdx)
 
     # Note: it will slow down signficantly with BFGS steps, they are 10x slower, just be aware!

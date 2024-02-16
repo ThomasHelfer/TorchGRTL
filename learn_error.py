@@ -25,7 +25,7 @@ from GeneralRelativity.Utils import (
     keys_all,
 )
 from GeneralRelativity.FourthOrderDerivatives import diff1, diff2
-from GeneralRelativity.Interpolation import *
+from pyinterpx.Interpolation import *
 from GeneralRelativity.TensorAlgebra import compute_christoffel
 from GeneralRelativity.Constraints import constraint_equations
 
@@ -63,11 +63,61 @@ def main():
     writer = SummaryWriter(f"{folder_name}")
 
     # Loading small testdata
-    filenamesX = "tests/TestData/Xdata_level0_step*"
-    num_varsX = 104
+    filenamesX = (
+        "/home/thelfer1/scr4_tedwar42/thelfer1/data_gen_binary/outputXdata_level1_*"
+    )
+    num_varsX = 100
     dataX = get_box_format(filenamesX, num_varsX)
     # Cutting out extra values added for validation
     dataX = dataX[:, :, :, :, :25]
+
+    class SuperResolution3DNet(torch.nn.Module):
+        def __init__(self):
+            super(SuperResolution3DNet, self).__init__()
+            self.points = 6
+            self.power = 3
+            self.channels = 25
+            self.interpolation = interp(
+                self.points, self.power, self.channels, False, True, torch.double
+            )
+
+            # Encoder
+            # The encoder consists of two 3D convolutional layers.
+            # The first conv layer expands the channel size from 25 to 64.
+            # The second conv layer further expands the channel size from 64 to 128.
+            # ReLU activation functions are used for non-linearity.
+            self.encoder = torch.nn.Sequential(
+                torch.nn.Conv3d(25, 64, kernel_size=3, padding=1),
+                torch.nn.ReLU(inplace=True),
+                torch.nn.Conv3d(64, 64, kernel_size=3, padding=1),
+                torch.nn.ReLU(inplace=True),
+                torch.nn.Conv3d(64, 64, kernel_size=3, padding=1),
+                torch.nn.ReLU(inplace=True),
+                torch.nn.Conv3d(64, 25, kernel_size=3, padding=1),
+                torch.nn.ReLU(inplace=True),
+            )
+
+            # Decoder
+            # The decoder uses a transposed 3D convolution (or deconvolution) to upsample the feature maps.
+            # The channel size is reduced from 128 back to 64.
+            # A final 3D convolution reduces the channel size back to the original size of 25.
+            self.decoder = torch.nn.Sequential(
+                torch.nn.ConvTranspose3d(128, 64, kernel_size=4, stride=2, padding=1),
+                torch.nn.ReLU(inplace=True),
+                torch.nn.Conv3d(64, 25, kernel_size=3, padding=1),
+            )
+
+            # Initialize only the weights in self.encoder and self.decoder
+            self.initialize_encoder_decoder_weights()
+
+        def forward(self, x):
+            # Reusing the input data for faster learning
+
+            x = self.interpolation(x)
+            tmp = x
+            x = x + self.encoder(tmp)
+
+            return x
 
     class SuperResolution3DNet(torch.nn.Module):
         def __init__(self):
@@ -160,7 +210,7 @@ def main():
     optimizerBFGS = torch.optim.LBFGS(
         net.parameters(), lr=0.1
     )  # Use LBFGS sometimes, it really does do magic sometimes, though its a bit of a diva
-    optimizerADAM = torch.optim.Adam(net.parameters(), lr=0.000001)
+    optimizerADAM = torch.optim.Adam(net.parameters(), lr=0.001)
 
     # Define the ratio for the split (e.g., 80% train, 20% test)
     train_ratio = 0.8
@@ -226,17 +276,13 @@ def main():
 
     # Note: it will slow down signficantly with BFGS steps, they are 10x slower, just be aware!
     ADAMsteps = (
-        10000  # Will perform # steps of ADAM steps and then switch over to BFGS-L
+        1000  # Will perform # steps of ADAM steps and then switch over to BFGS-L
     )
-    n_steps = 10000  # Total amount of steps
+    n_steps = 1000  # Total amount of steps
 
     net.train()
     net.to(device)
     net.interpolation.to(device)
-
-    # for convs in net.interpolation.conv_layers:
-    #    convs.to(device)
-    #    convs.weight.to(device)
 
     my_loss = torch.nn.L1Loss()
     print("training")
