@@ -5,3 +5,4 @@ pytest
 numpy
 tqdm
 matplotlib
+pyinterpx
