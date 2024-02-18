@@ -52,7 +52,7 @@ def main():
         print(f"Folder '{folder_name}' already exists.")
 
     # copy code into folder for reproducibility
-    shutil.copy("learn_model.py", folder_name)
+    shutil.copy("learn_error.py", folder_name)
     print(f"Copied script to '{folder_name}'.")
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -88,10 +88,6 @@ def main():
             # ReLU activation functions are used for non-linearity.
             self.encoder = torch.nn.Sequential(
                 torch.nn.Conv3d(25, 64, kernel_size=3, padding=1),
-                torch.nn.ReLU(inplace=True),
-                torch.nn.Conv3d(64, 64, kernel_size=3, padding=1),
-                torch.nn.ReLU(inplace=True),
-                torch.nn.Conv3d(64, 64, kernel_size=3, padding=1),
                 torch.nn.ReLU(inplace=True),
                 torch.nn.Conv3d(64, 25, kernel_size=3, padding=1),
                 torch.nn.ReLU(inplace=True),
@@ -192,6 +188,7 @@ def main():
 
     # Forward pass to obtain the high-resolution output
     output_tensor = net(input_tensor)
+    print("mean", torch.mean(output_tensor))
 
     # Check the shape of the output
     print("Input Shape:", dataX.shape)
@@ -210,7 +207,7 @@ def main():
     optimizerBFGS = torch.optim.LBFGS(
         net.parameters(), lr=0.1
     )  # Use LBFGS sometimes, it really does do magic sometimes, though its a bit of a diva
-    optimizerADAM = torch.optim.Adam(net.parameters(), lr=0.001)
+    optimizerADAM = torch.optim.Adam(net.parameters(), lr=0.00001)
 
     # Define the ratio for the split (e.g., 80% train, 20% test)
     train_ratio = 0.8
@@ -224,7 +221,7 @@ def main():
     train_torch = dataX[:num_train].permute(0, 4, 1, 2, 3).to(device)
     test_torch = dataX[num_train:].permute(0, 4, 1, 2, 3).to(device)
 
-    batch_size = 5
+    batch_size = 51
 
     # Create DataLoader for batching -- in case data gets larger
     train_loader = DataLoader(
@@ -271,14 +268,14 @@ def main():
     if restart and os.path.exists(file_path):
         net.load_state_dict(torch.load(file_path))
 
-    oneoverdx = 64.0 / 4.0
+    oneoverdx = 64.0 / 16.0
     my_loss = Hamiltonian_loss(oneoverdx)
 
     # Note: it will slow down signficantly with BFGS steps, they are 10x slower, just be aware!
     ADAMsteps = (
         1000  # Will perform # steps of ADAM steps and then switch over to BFGS-L
     )
-    n_steps = 1000  # Total amount of steps
+    n_steps = 1  # Total amount of steps
 
     net.train()
     net.to(device)
@@ -458,7 +455,7 @@ def main():
 
     box = 0
     channel = 0
-    slice = 5
+    slice = 4
 
     net.eval()
     y_pred = net(X_batch.detach())
