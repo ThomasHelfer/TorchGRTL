@@ -59,8 +59,8 @@ def main():
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print("Executing the model on :", device)
 
-    torch.manual_seed(1)
-    np.random.seed(4)
+    torch.manual_seed(3)
+    np.random.seed(6)
     writer = SummaryWriter(f"{folder_name}")
 
     # Loading small testdata
@@ -199,13 +199,13 @@ def main():
 
     # Split the dataset into training and testing datasets
     train_dataset, test_dataset = random_split(dataset, [num_train, num_test])
-    batch_size = 51
+    batch_size = 100
 
     # Create DataLoader for batching -- in case data gets larger
     train_loader = DataLoader(
         dataset=train_dataset,
         batch_size=batch_size,
-        shuffle=False,
+        shuffle=True,
         pin_memory=False,
         num_workers=0,
     )
@@ -242,7 +242,7 @@ def main():
 
     # load model in case you restart form checkpoint
     restart = False
-    file_path = "model_epoch_counter_0000004000_data_time_1706644608.pth"
+    file_path = "model_epoch_counter_0000000049_data_time_1718669354.pth"
     if restart and os.path.exists(file_path):
         net.load_state_dict(torch.load(file_path))
 
@@ -252,8 +252,10 @@ def main():
     my_loss = Hamiltonian_loss(oneoverdx)
 
     # Note: it will slow down signficantly with BFGS steps, they are 10x slower, just be aware!
-    ADAMsteps = 21  # Will perform # steps of ADAM steps and then switch over to BFGS-L
-    n_steps = 23  # Total amount of steps
+    ADAMsteps = (
+        1000  # Will perform # steps of ADAM steps and then switch over to BFGS-L
+    )
+    n_steps = 900  # Total amount of steps
 
     net.train()
     net.to(device)
