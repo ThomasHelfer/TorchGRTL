@@ -65,7 +65,11 @@ def main():
 
     # Loading small testdata
     # filenamesX = "/home/thelfer1/scr4_tedwar42/thelfer1/data_gen_binary/outputXdata_level1_step0050.dat"
-    res_level = 6
+    # Note: it will slow down signficantly with BFGS steps, they are 10x slower, just be aware!
+    ADAMsteps = 200  # Will perform # steps of ADAM steps and then switch over to BFGS-L
+    n_steps = 241  # Total amount of steps
+
+    res_level = 5
     scaling_factor = 0.5e-2
     filenamesX = f"/home/thelfer1/scr4_tedwar42/thelfer1/high_end_data/outputXdata_level{res_level}_step*.dat"
 
@@ -251,10 +255,6 @@ def main():
     oneoverdx = (64.0 * 2**res_level) / 512.0
     print(f"dx {1.0/oneoverdx}")
     my_loss = Hamiltonian_loss(oneoverdx)
-
-    # Note: it will slow down signficantly with BFGS steps, they are 10x slower, just be aware!
-    ADAMsteps = 200  # Will perform # steps of ADAM steps and then switch over to BFGS-L
-    n_steps = 250  # Total amount of steps
 
     net.train()
     net.to(device)
