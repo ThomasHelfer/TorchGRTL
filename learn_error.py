@@ -248,7 +248,7 @@ def main():
         net.load_state_dict(torch.load(file_path))
 
     # oneoverdx = 64.0 / 16.0
-    oneoverdx = (64.0 * 2**6) / 512.0
+    oneoverdx = (64.0 * 2**res_level) / 512.0
     print(f"dx {1.0/oneoverdx}")
     my_loss = Hamiltonian_loss(oneoverdx)
 
