@@ -65,8 +65,9 @@ def main():
 
     # Loading small testdata
     # filenamesX = "/home/thelfer1/scr4_tedwar42/thelfer1/data_gen_binary/outputXdata_level1_step0050.dat"
-
-    filenamesX = "/home/thelfer1/scr4_tedwar42/thelfer1/high_end_data/outputXdata_level9_step000[02].dat"
+    res_level = 6
+    scaling_factor = 0.5e-2
+    filenamesX = f"/home/thelfer1/scr4_tedwar42/thelfer1/high_end_data/outputXdata_level{res_level}_step*.dat"
 
     num_varsX = 25
     dataX = get_box_format(filenamesX, num_varsX)
@@ -143,7 +144,7 @@ def main():
 
             x = self.interpolation(x)
             tmp = x
-            x = x + self.encoder(tmp)
+            x = x + self.encoder(tmp) * scaling_factor
 
             return x
 
@@ -247,18 +248,18 @@ def main():
         net.load_state_dict(torch.load(file_path))
 
     # oneoverdx = 64.0 / 16.0
-    oneoverdx = (64.0 * 2**9) / 512.0
+    oneoverdx = (64.0 * 2**6) / 512.0
     print(f"dx {1.0/oneoverdx}")
     my_loss = Hamiltonian_loss(oneoverdx)
 
     # Note: it will slow down signficantly with BFGS steps, they are 10x slower, just be aware!
-    ADAMsteps = (
-        1000  # Will perform # steps of ADAM steps and then switch over to BFGS-L
-    )
-    n_steps = 900  # Total amount of steps
+    ADAMsteps = 200  # Will perform # steps of ADAM steps and then switch over to BFGS-L
+    n_steps = 250  # Total amount of steps
 
     net.train()
     net.to(device)
+    net.to(torch.double)
+    net.double()
     net.interpolation.to(device)
 
     # my_loss = torch.nn.L1Loss()
@@ -305,6 +306,7 @@ def main():
             total_loss_train += loss_train.item()
         # Calculate the average training loss
         average_loss_train = total_loss_train / len(train_loader)
+        print(average_loss_train)
         # Log the average training loss
         writer.add_scalar("loss/train", average_loss_train, counter)
         losses_train.append(average_loss_train)
@@ -343,7 +345,7 @@ def main():
                 writer.add_scalar("loss/test", loss_val.item(), counter)
                 writer.add_scalar("loss/test", loss_val.item(), counter)
 
-        if counter % 1 == 0:
+        if counter % 40 == 0:
             # Writing out network and scaler
             torch.save(
                 net.state_dict(),
@@ -354,6 +356,7 @@ def main():
 
     # Plotting shit at the end
     plt.figure(figsize=(9, 6))
+    print(f"final val loss {losses_val[-1]} relative {losses_val_interp[-1]}")
     plt.plot(np.array(losses_train), label="Train")
     plt.plot(steps_val, np.array(losses_val), label="Val", linewidth=0.5)
     plt.plot(steps_val, np.array(losses_val_interp), label="baseline", linewidth=0.5)
@@ -504,6 +507,7 @@ def main():
     y_pred = net(X_batch.detach())
 
     with open(folder_name + "/Metric_data.txt", "a") as file:
+        file.write(f"final val loss {losses_val[-1]} relative {losses_val_interp[-1]}")
         file.write(
             f"Reference data L2 Ham {my_loss(y_batch[:, :, :, :, :], torch.tensor([])).detach().cpu().numpy()}\n"
         )
