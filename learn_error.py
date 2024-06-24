@@ -1,10 +1,11 @@
+import sys
+import os
+import argparse
+
 import torch
 import pandas as pd
 import numpy as np
 import time
-import sys
-import os
-import argparse
 import shutil
 import matplotlib.pylab as plt
 from sklearn.preprocessing import StandardScaler
@@ -16,6 +17,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm.auto import tqdm, trange
 import torch.nn.init as init
 from torch.utils.data import DataLoader, TensorDataset, random_split
+import yaml
 
 
 from GeneralRelativity.Utils import (
@@ -33,6 +35,12 @@ from GeneralRelativity.Constraints import constraint_equations
 from torch.utils.data import TensorDataset, DataLoader
 
 time_stamp = int(time.time())
+
+
+# Function to load the configuration
+def load_config(config_path):
+    with open(config_path, "r") as file:
+        return yaml.safe_load(file)
 
 
 def main():
@@ -63,15 +71,25 @@ def main():
     np.random.seed(6)
     writer = SummaryWriter(f"{folder_name}")
 
-    # Loading small testdata
-    # filenamesX = "/home/thelfer1/scr4_tedwar42/thelfer1/data_gen_binary/outputXdata_level1_step0050.dat"
-    # Note: it will slow down signficantly with BFGS steps, they are 10x slower, just be aware!
-    ADAMsteps = 200  # Will perform # steps of ADAM steps and then switch over to BFGS-L
-    n_steps = 241  # Total amount of steps
+    # Set up argument parsing
+    parser = argparse.ArgumentParser(description="Process some integers.")
+    parser.add_argument("config", type=str, help="Path to the configuration file")
 
-    res_level = 5
-    scaling_factor = 0.5e-2
-    filenamesX = f"/home/thelfer1/scr4_tedwar42/thelfer1/high_end_data/outputXdata_level{res_level}_step*.dat"
+    # Parse arguments
+    args = parser.parse_args()
+
+    # Load configuration
+    config = load_config(args.config)
+
+    # Access configuration variables
+    ADAMsteps = config["ADAMsteps"]
+    n_steps = config["n_steps"]
+    res_level = config["res_level"]
+    scaling_factor = config["scaling_factor"]
+    factor = config["factor"]
+    filenamesX = config["filenamesX"].format(res_level=res_level)
+    restart = config["restart"]
+    file_path = config["file_path"]
 
     num_varsX = 25
     dataX = get_box_format(filenamesX, num_varsX)
@@ -86,7 +104,7 @@ def main():
     plt.savefig("testarray.png")
 
     class SuperResolution3DNet(torch.nn.Module):
-        def __init__(self, factor):
+        def __init__(self, factor, scaling_factor):
             super(SuperResolution3DNet, self).__init__()
             self.points = 6
             self.power = 3
@@ -100,6 +118,7 @@ def main():
                 factor=factor,
                 dtype=torch.double,
             )
+            self.scaling_factor = scaling_factor
 
             # Encoder
             # The encoder consists of two 3D convolutional layers.
@@ -127,34 +146,17 @@ def main():
                 torch.nn.Conv3d(64, 25, kernel_size=3, padding=1),
             )
 
-            # Initialize only the weights in self.encoder and self.decoder
-            # self.initialize_encoder_decoder_weights()
-
-        def initialize_encoder_decoder_weights(self):
-            for m in [self.encoder, self.decoder]:
-                for layer in m:
-                    if isinstance(layer, torch.nn.Conv3d) or isinstance(
-                        layer, torch.nn.ConvTranspose3d
-                    ):
-                        if hasattr(layer, "weight") and layer.weight is not None:
-                            init.normal_(
-                                layer.weight, mean=0, std=1e-3
-                            )  # Adjust std as needed
-                            if layer.bias is not None:
-                                init.constant_(layer.bias, 0)
-
         def forward(self, x):
             # Reusing the input data for faster learning
 
             x = self.interpolation(x)
-            tmp = x
-            x = x + self.encoder(tmp) * scaling_factor
+            tmp = x.clone()
+            x = x + self.encoder(tmp) * self.scaling_factor
 
-            return x
+            return x, tmp
 
-    factor = 2
     # Instantiate the model
-    net = SuperResolution3DNet(factor).to(torch.double)
+    net = SuperResolution3DNet(factor, scaling_factor).to(torch.double)
 
     # Create a random 3D low-resolution input tensor (batch size, channels, depth, height, width)
     input_tensor = torch.randn(
@@ -164,7 +166,7 @@ def main():
     )  # Adjust dimensions as needed
 
     # Forward pass to obtain the high-resolution output
-    output_tensor = net(input_tensor)
+    output_tensor, _ = net(input_tensor)
     print("mean", torch.mean(output_tensor))
 
     # Check the shape of the output
@@ -226,9 +228,14 @@ def main():
         def __init__(self, oneoverdx: float):
             self.oneoverdx = oneoverdx
 
-        def __call__(self, output: torch.tensor, dummy: torch.tensor) -> torch.tensor:
+        def __call__(
+            self, output: torch.tensor, y_interp: torch.tensor
+        ) -> torch.tensor:
             # For learning we need shape (batch,channel,x,y,z), however TorchGRTL works with (batch,x,y,z,channel), thus the permute
             output = output.permute(0, 2, 3, 4, 1)
+            if y_interp is not None:
+                y_interp = y_interp.permute(0, 2, 3, 4, 1)
+
             # cutting ghosts off, otherwise you will run into problems later
             dataXcut = cut_ghosts(output)
 
@@ -242,12 +249,13 @@ def main():
             chris = compute_christoffel(d1["h"], h_UU)
             # Computing Constraints
             out = constraint_equations(vars, d1, d2, h_UU, chris)
-            loss = torch.mean(out["Ham"] * out["Ham"])
+            diff = 0
+            if y_interp is not None:
+                diff = torch.abs(torch.mean(y_interp - output))
+            hamloss = torch.mean(out["Ham"] * out["Ham"])
+            loss = hamloss + diff
             return loss
 
-    # load model in case you restart form checkpoint
-    restart = False
-    file_path = "model_epoch_counter_0000000049_data_time_1718669354.pth"
     if restart and os.path.exists(file_path):
         net.load_state_dict(torch.load(file_path))
 
@@ -259,7 +267,6 @@ def main():
     net.train()
     net.to(device)
     net.to(torch.double)
-    net.double()
     net.interpolation.to(device)
 
     # my_loss = torch.nn.L1Loss()
@@ -281,7 +288,7 @@ def main():
             def closure():
                 if torch.is_grad_enabled():
                     optimizerBFGS.zero_grad()
-                y_pred = net(X_batch)
+                y_pred, y_interp = net(X_batch)
 
                 loss_train = my_loss(y_pred, y_batch)
                 if loss_train.requires_grad:
@@ -290,7 +297,7 @@ def main():
 
             # doing some ADAM first to warm up, sometimes BFGS fuckes up if you start too early
             if counter < ADAMsteps:
-                y_pred = net(X_batch)
+                y_pred, y_interp = net(X_batch)
 
                 loss_train = my_loss(y_pred, y_batch)
                 optimizerADAM.zero_grad()
@@ -331,11 +338,10 @@ def main():
                         diff - 1 : -diff - 1,
                         diff - 1 : -diff - 1,
                     ]
-                    y_val_interp = net.interpolation(X_val_batch)
-                    y_val_pred = net(X_val_batch)
-                    loss_val = my_loss(y_val_pred, y_val_batch)
+                    y_val_pred, y_val_interp = net(X_val_batch)
+                    loss_val = my_loss(y_val_pred, None)
                     total_loss_val += loss_val.item()
-                    interp_val += my_loss(y_val_interp, y_val_batch).item()
+                    interp_val += my_loss(y_val_interp, None).item()
                 # Calculate the average loss
                 average_loss_val = total_loss_val / len(test_loader)
                 average_interp_val = interp_val / len(test_loader)
@@ -384,10 +390,8 @@ def main():
         points, power, channels, False, True, dtype=torch.double, factor=factor
     )
     ghosts = int(math.ceil(points / 2))
-    shape_higher_order = (shape[-1] - 2 * ghosts) * 2 + 2
 
     y_interpolated = interpolation(X_batch.detach().cpu()).detach().to(torch.double)
-    y_interpolated_buffer = torch.zeros_like(y_batch.detach())
     diff = (y_batch.shape[-1] - y_interpolated.shape[-1]) // 2
 
     box = 0
@@ -397,7 +401,7 @@ def main():
     max_val = torch.max(y_batch[box, channel, :, :, slice]).cpu().numpy()
     min_val = torch.min(y_batch[box, channel, :, :, slice]).cpu().numpy()
     net.eval()
-    y_pred = net(X_batch.detach())
+    y_pred, _ = net(X_batch.detach())
 
     # Create subplots
     fig, axes = plt.subplots(1, 3, figsize=(15, 5))
@@ -451,7 +455,7 @@ def main():
     slice = 5
 
     net.eval()
-    y_pred = net(X_batch.detach())
+    y_pred, _ = net(X_batch.detach())
 
     plt.plot(
         y_batch[box, channel, :, slice, slice].detach().cpu().numpy(),
@@ -477,7 +481,7 @@ def main():
     slice = 5
 
     net.eval()
-    y_pred = net(X_batch.detach())
+    y_pred, _ = net(X_batch.detach())
 
     plt.plot(
         np.abs(
@@ -504,7 +508,7 @@ def main():
     my_loss = Hamiltonian_loss(oneoverdx)
 
     net.eval()
-    y_pred = net(X_batch.detach())
+    y_pred, _ = net(X_batch.detach())
 
     with open(folder_name + "/Metric_data.txt", "a") as file:
         file.write(f"final val loss {losses_val[-1]} relative {losses_val_interp[-1]}")

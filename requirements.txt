@@ -6,3 +6,4 @@ numpy
 tqdm
 matplotlib
 pyinterpx
+pyyaml
