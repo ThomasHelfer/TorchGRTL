@@ -1,7 +1,7 @@
 ADAMsteps: 200
-n_steps: 1
-res_level: 7
-scaling_factor: 0.00005
+n_steps: 210
+res_level: 5
+scaling_factor: 0.001
 # rescale factor
 factor: 2
 # Data Source 
@@ -9,3 +9,4 @@ filenamesX: "/home/thelfer1/scr4_tedwar42/thelfer1/high_end_data/outputXdata_lev
 # Restarting 
 restart: False
 file_path: "model_epoch_counter_0000000049_data_time_1718669354.pth"
+lambda_fac: 0.0

@@ -43,6 +43,13 @@ def load_config(config_path):
         return yaml.safe_load(file)
 
 
+# Function to copy the configuration file
+def copy_config_file(source, destination):
+    if not os.path.exists(destination):
+        os.makedirs(destination)
+    shutil.copy(source, destination)
+
+
 def main():
     default_job_id = "local_run"
     # Parse the arguments
@@ -81,6 +88,9 @@ def main():
     # Load configuration
     config = load_config(args.config)
 
+    # Copy the configuration file to the tracking directory
+    copy_config_file(args.config, folder_name)
+
     # Access configuration variables
     ADAMsteps = config["ADAMsteps"]
     n_steps = config["n_steps"]
@@ -91,6 +101,7 @@ def main():
     restart = config["restart"]
     file_path = config["file_path"]
     lambda_fac = config["lambda_fac"]
+    print(f"lambda_fac {type(scaling_factor)}")
 
     num_varsX = 25
     dataX = get_box_format(filenamesX, num_varsX)
@@ -152,8 +163,8 @@ def main():
 
             x = self.interpolation(x)
             tmp = x.clone()
-            x = x + self.encoder(tmp) * self.scaling_factor
 
+            x = x + self.encoder(tmp) * self.scaling_factor
             return x, tmp
 
     # Instantiate the model
@@ -228,7 +239,7 @@ def main():
     class Hamiltonian_loss:
         def __init__(self, oneoverdx: float, lambda_fac: float = 0):
             self.oneoverdx = oneoverdx
-            self.lambda_fac = float(lambda_fac)
+            self.lambda_fac = lambda_fac
 
         def __call__(
             self, output: torch.tensor, y_interp: torch.tensor
@@ -315,7 +326,6 @@ def main():
             total_loss_train += loss_train.item()
         # Calculate the average training loss
         average_loss_train = total_loss_train / len(train_loader)
-        print(average_loss_train)
         # Log the average training loss
         writer.add_scalar("loss/train", average_loss_train, counter)
         losses_train.append(average_loss_train)
