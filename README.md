@@ -10,7 +10,7 @@
 
 
 ## Overview
-TorchGRTL is a Python library that provides a PyTorch-based implementation of key components of [GRTL codebase](https://example.com](https://github.com/GRTLCollaboration/GRChombo)) . It uses GPU optimisation and Autodiff of PyTorch to accelerate computations, making it suitable for machine learning applications in physics and simulation.
+TorchGRTL is a Python library that provides a PyTorch-based implementation of key components of [GRTL codebase](https://example.com](https://github.com/GRTLCollaboration/GRChombo)) . It uses GPU optimisation and Autodiff of PyTorch to accelerate computations to improve black hole simulations. 
 
 ## Installation
 
