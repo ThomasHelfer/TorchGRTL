@@ -7,6 +7,9 @@ import pandas as pd
 import numpy as np
 import time
 import shutil
+import yaml
+
+import wandb
 import matplotlib.pylab as plt
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
@@ -17,7 +20,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm.auto import tqdm, trange
 import torch.nn.init as init
 from torch.utils.data import DataLoader, TensorDataset, random_split
-import yaml
+from torch.utils.data import TensorDataset, DataLoader
 
 
 from GeneralRelativity.Utils import (
@@ -32,22 +35,11 @@ from pyinterpx.Interpolation import *
 from GeneralRelativity.TensorAlgebra import compute_christoffel
 from GeneralRelativity.Constraints import constraint_equations
 
-from torch.utils.data import TensorDataset, DataLoader
+from SuperResolution.models import SuperResolution3DNet
+from SuperResolution.losses import Hamiltonian_loss
+from SuperResolution.utils import load_config, copy_config_file
 
 time_stamp = int(time.time())
-
-
-# Function to load the configuration
-def load_config(config_path):
-    with open(config_path, "r") as file:
-        return yaml.safe_load(file)
-
-
-# Function to copy the configuration file
-def copy_config_file(source, destination):
-    if not os.path.exists(destination):
-        os.makedirs(destination)
-    shutil.copy(source, destination)
 
 
 def main():
@@ -88,6 +80,11 @@ def main():
     # Load configuration
     config = load_config(args.config)
 
+    # Initialize wandb
+    wandb.init(project="TorchGRTL", config=config)
+    # Log hyperparameters
+    wandb.config.update(config)
+
     # Copy the configuration file to the tracking directory
     copy_config_file(args.config, folder_name)
 
@@ -114,58 +111,6 @@ def main():
     plt.colorbar()  # Add a colorbar to show the scale
     plt.title("2D Array Plot")
     plt.savefig("testarray.png")
-
-    class SuperResolution3DNet(torch.nn.Module):
-        def __init__(self, factor, scaling_factor):
-            super(SuperResolution3DNet, self).__init__()
-            self.points = 6
-            self.power = 3
-            self.channels = 25
-            self.interpolation = interp(
-                num_points=self.points,
-                max_degree=self.power,
-                num_channels=self.channels,
-                learnable=False,
-                align_corners=True,
-                factor=factor,
-                dtype=torch.double,
-            )
-            self.scaling_factor = scaling_factor
-
-            # Encoder
-            # The encoder consists of two 3D convolutional layers.
-            # The first conv layer expands the channel size from 25 to 64.
-            # The second conv layer further expands the channel size from 64 to 128.
-            # ReLU activation functions are used for non-linearity.
-            self.encoder = torch.nn.Sequential(
-                torch.nn.Conv3d(25, 64, kernel_size=3, padding=1),
-                torch.nn.ReLU(inplace=True),
-                torch.nn.Conv3d(64, 64, kernel_size=3, padding=1),
-                torch.nn.ReLU(inplace=True),
-                torch.nn.Conv3d(64, 64, kernel_size=3, padding=1),
-                torch.nn.ReLU(inplace=True),
-                torch.nn.Conv3d(64, 25, kernel_size=3, padding=1),
-                torch.nn.ReLU(inplace=True),
-            )
-
-            # Decoder
-            # The decoder uses a transposed 3D convolution (or deconvolution) to upsample the feature maps.
-            # The channel size is reduced from 128 back to 64.
-            # A final 3D convolution reduces the channel size back to the original size of 25.
-            self.decoder = torch.nn.Sequential(
-                torch.nn.ConvTranspose3d(128, 64, kernel_size=4, stride=2, padding=1),
-                torch.nn.ReLU(inplace=True),
-                torch.nn.Conv3d(64, 25, kernel_size=3, padding=1),
-            )
-
-        def forward(self, x):
-            # Reusing the input data for faster learning
-
-            x = self.interpolation(x)
-            tmp = x.clone()
-
-            x = x + self.encoder(tmp) * self.scaling_factor
-            return x, tmp
 
     # Instantiate the model
     net = SuperResolution3DNet(factor, scaling_factor).to(torch.double)
@@ -235,47 +180,13 @@ def main():
         num_workers=0,
     )
 
-    # Magical loss coming from General Relativity
-    class Hamiltonian_loss:
-        def __init__(self, oneoverdx: float, lambda_fac: float = 0):
-            self.oneoverdx = oneoverdx
-            self.lambda_fac = lambda_fac
-
-        def __call__(
-            self, output: torch.tensor, y_interp: torch.tensor
-        ) -> torch.tensor:
-            # For learning we need shape (batch,channel,x,y,z), however TorchGRTL works with (batch,x,y,z,channel), thus the permute
-            output = output.permute(0, 2, 3, 4, 1)
-            if y_interp is not None:
-                y_interp = y_interp.permute(0, 2, 3, 4, 1)
-
-            # cutting ghosts off, otherwise you will run into problems later
-            dataXcut = cut_ghosts(output)
-
-            # creating dict with values
-            vars = TensorDict(dataXcut, keys)
-            # creating dict with derivatives
-            d1 = TensorDict(diff1(output, oneoverdx), keys)
-            d2 = TensorDict(diff2(output, oneoverdx**2), keys)
-            # calculating variables required for constraints
-            h_UU = torch.inverse(vars["h"])
-            chris = compute_christoffel(d1["h"], h_UU)
-            # Computing Constraints
-            out = constraint_equations(vars, d1, d2, h_UU, chris)
-            diff = 0
-            if y_interp is not None:
-                diff = torch.abs(torch.mean(y_interp - output))
-            hamloss = torch.mean(out["Ham"] * out["Ham"])
-            loss = hamloss + diff * self.lambda_fac
-            return loss
-
     if restart and os.path.exists(file_path):
         net.load_state_dict(torch.load(file_path))
 
     # oneoverdx = 64.0 / 16.0
     oneoverdx = (64.0 * 2**res_level) / 512.0 * 2.0
     print(f"dx {1.0/oneoverdx}")
-    my_loss = Hamiltonian_loss(oneoverdx, lambda_fac)
+    my_loss = Hamiltonian_loss(oneoverdx)
 
     net.train()
     net.to(device)
@@ -303,7 +214,7 @@ def main():
                     optimizerBFGS.zero_grad()
                 y_pred, y_interp = net(X_batch)
 
-                loss_train = my_loss(y_pred, y_interp)
+                loss_train = my_loss(y_pred)
                 if loss_train.requires_grad:
                     loss_train.backward()
                 return loss_train
@@ -312,7 +223,7 @@ def main():
             if counter < ADAMsteps:
                 y_pred, y_interp = net(X_batch)
 
-                loss_train = my_loss(y_pred, y_interp)
+                loss_train = my_loss(y_pred)
                 optimizerADAM.zero_grad()
                 loss_train.backward()
                 optimizerADAM.step()
@@ -324,8 +235,11 @@ def main():
 
             loss_train = closure()
             total_loss_train += loss_train.item()
+
         # Calculate the average training loss
         average_loss_train = total_loss_train / len(train_loader)
+        # Log the average training loss
+        wandb.log({"loss/train": average_loss_train, "step": counter})
         # Log the average training loss
         writer.add_scalar("loss/train", average_loss_train, counter)
         losses_train.append(average_loss_train)
@@ -351,9 +265,9 @@ def main():
                         diff - 1 : -diff - 1,
                     ]
                     y_val_pred, y_val_interp = net(X_val_batch)
-                    loss_val = my_loss(y_val_pred, None)
+                    loss_val = my_loss(y_val_pred)
                     total_loss_val += loss_val.item()
-                    interp_val += my_loss(y_val_interp, None).item()
+                    interp_val += my_loss(y_val_interp).item()
                 # Calculate the average loss
                 average_loss_val = total_loss_val / len(test_loader)
                 average_interp_val = interp_val / len(test_loader)
@@ -361,7 +275,13 @@ def main():
                 losses_val.append(average_loss_val)
                 steps_val.append(counter)
                 writer.add_scalar("loss/test", loss_val.item(), counter)
-                writer.add_scalar("loss/test", loss_val.item(), counter)
+                wandb.log(
+                    {
+                        "loss/val": loss_val.item(),
+                        "loss/val_interp": average_interp_val,
+                        "step": counter,
+                    }
+                )
 
         if counter % 40 == 0:
             # Writing out network and scaler
