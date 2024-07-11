@@ -277,7 +277,7 @@ def main():
                 writer.add_scalar("loss/test", loss_val.item(), counter)
                 wandb.log(
                     {
-                        "loss/val": loss_val.item(),
+                        "loss/val": average_loss_val,
                         "loss/val_interp": average_interp_val,
                         "step": counter,
                     }
