@@ -36,7 +36,7 @@ from GeneralRelativity.TensorAlgebra import compute_christoffel
 from GeneralRelativity.Constraints import constraint_equations
 
 from SuperResolution.models import SuperResolution3DNet
-from SuperResolution.losses import Hamiltonian_loss
+from SuperResolution.losses import Hamiltonian_loss, Hamiltonian_and_momentum_loss
 from SuperResolution.utils import load_config, copy_config_file
 
 time_stamp = int(time.time())
@@ -186,7 +186,10 @@ def main():
     # oneoverdx = 64.0 / 16.0
     oneoverdx = (64.0 * 2**res_level) / 512.0 * 2.0
     print(f"dx {1.0/oneoverdx}")
-    my_loss = Hamiltonian_loss(oneoverdx)
+    if config["loss"] == "Ham":
+        my_loss = Hamiltonian_loss(oneoverdx)
+    elif config["loss"] == "Ham_mom":
+        my_loss = Hamiltonian_and_momentum_loss(oneoverdx)
 
     net.train()
     net.to(device)
