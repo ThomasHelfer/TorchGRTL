@@ -172,7 +172,7 @@ def main():
 
     # Create a random 3D low-resolution input tensor (batch size, channels, depth, height, width)
     input_tensor = torch.randn(
-        1, dataX.shape[4], dataX.shape[1] // 2, dataX.shape[2] // 2, dataX.shape[3] // 2
+        1, dataX.shape[4], dataX.shape[1], dataX.shape[2], dataX.shape[3]
     ).to(
         torch.double
     )  # Adjust dimensions as needed
@@ -218,7 +218,7 @@ def main():
 
     # Split the dataset into training and testing datasets
     train_dataset, test_dataset = random_split(dataset, [num_train, num_test])
-    batch_size = 100
+    batch_size = config["batch_size"]
 
     # Create DataLoader for batching -- in case data gets larger
     train_loader = DataLoader(
@@ -273,7 +273,7 @@ def main():
         net.load_state_dict(torch.load(file_path))
 
     # oneoverdx = 64.0 / 16.0
-    oneoverdx = (64.0 * 2**res_level) / 512.0
+    oneoverdx = (64.0 * 2**res_level) / 512.0 * 2.0
     print(f"dx {1.0/oneoverdx}")
     my_loss = Hamiltonian_loss(oneoverdx, lambda_fac)
 
@@ -291,7 +291,7 @@ def main():
             batchcounter = 0
             # for X_batch, y_batch in train_loader:
             y_batch = y_batch.to(device)
-            X_batch = y_batch[:, :, ::2, ::2, ::2].clone()
+            X_batch = y_batch[:, :, :, :, :].clone()
             y_batch = y_batch[
                 :, :25, diff - 1 : -diff - 1, diff - 1 : -diff - 1, diff - 1 : -diff - 1
             ]
@@ -342,7 +342,7 @@ def main():
                     # for X_val_batch, y_val_batch in test_loader:
                     # Transfer batch to GPU
                     y_val_batch = y_val_batch.to(device)
-                    X_val_batch = y_val_batch[:, :, ::2, ::2, ::2].clone()
+                    X_val_batch = y_val_batch[:, :, :, :, :].clone()
                     y_val_batch = y_val_batch[
                         :,
                         :25,
