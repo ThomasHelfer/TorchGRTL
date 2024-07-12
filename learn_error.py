@@ -98,6 +98,9 @@ def main():
     restart = config["restart"]
     file_path = config["file_path"]
     lambda_fac = config["lambda_fac"]
+    kernel_size = config["kernel_size"]
+    padding = config["padding"]
+
     print(f"lambda_fac {type(scaling_factor)}")
 
     num_varsX = 25
@@ -113,7 +116,9 @@ def main():
     plt.savefig("testarray.png")
 
     # Instantiate the model
-    net = SuperResolution3DNet(factor, scaling_factor).to(torch.double)
+    net = SuperResolution3DNet(
+        factor, scaling_factor=scaling_factor, kernel_size=kernel_size, padding=padding
+    ).to(torch.double)
 
     # Create a random 3D low-resolution input tensor (batch size, channels, depth, height, width)
     input_tensor = torch.randn(
@@ -142,12 +147,12 @@ def main():
     steps_val = []
 
     optimizerBFGS = torch.optim.LBFGS(
-        net.parameters(), lr=0.1
+        net.parameters(), lr=config["lr_bfgs"]
     )  # Use LBFGS sometimes, it really does do magic sometimes, though its a bit of a diva
-    optimizerADAM = torch.optim.Adam(net.parameters(), lr=1e-4)
+    optimizerADAM = torch.optim.Adam(net.parameters(), lr=config["lr_adam"])
 
     # Define the ratio for the split (e.g., 80% train, 20% test)
-    train_ratio = 0.8
+    train_ratio = config["train_ratio"]
     test_ratio = 1 - train_ratio
 
     # Calculate the number of samples for each split

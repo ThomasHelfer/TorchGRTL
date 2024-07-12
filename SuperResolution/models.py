@@ -19,11 +19,15 @@ from GeneralRelativity.Utils import (
 
 
 class SuperResolution3DNet(torch.nn.Module):
-    def __init__(self, factor, scaling_factor):
+    def __init__(
+        self, factor, scaling_factor, kernel_size=3, padding="same", nonlinearity="relu"
+    ):
         super(SuperResolution3DNet, self).__init__()
         self.points = 6
         self.power = 3
         self.channels = 25
+        self.kernel_size = kernel_size
+        self.padding = padding
         self.interpolation = interp(
             num_points=self.points,
             max_degree=self.power,
@@ -35,20 +39,25 @@ class SuperResolution3DNet(torch.nn.Module):
         )
         self.scaling_factor = scaling_factor
 
+        if nonlinearity == "relu":
+            self.nonlinearity = torch.nn.ReLU()
+        elif nonlinearity == "gelu":
+            self.nonlinearity = torch.nn.GELU()
+
         # Encoder
         # The encoder consists of two 3D convolutional layers.
         # The first conv layer expands the channel size from 25 to 64.
         # The second conv layer further expands the channel size from 64 to 128.
         # ReLU activation functions are used for non-linearity.
         self.encoder = torch.nn.Sequential(
-            torch.nn.Conv3d(25, 64, kernel_size=3, padding=1),
-            torch.nn.ReLU(inplace=True),
-            torch.nn.Conv3d(64, 64, kernel_size=3, padding=1),
-            torch.nn.ReLU(inplace=True),
-            torch.nn.Conv3d(64, 64, kernel_size=3, padding=1),
-            torch.nn.ReLU(inplace=True),
-            torch.nn.Conv3d(64, 25, kernel_size=3, padding=1),
-            torch.nn.ReLU(inplace=True),
+            torch.nn.Conv3d(25, 64, kernel_size=self.kernel_size, padding=self.padding),
+            self.nonlinearity,
+            torch.nn.Conv3d(64, 64, kernel_size=self.kernel_size, padding=self.padding),
+            self.nonlinearity,
+            torch.nn.Conv3d(64, 64, kernel_size=self.kernel_size, padding=self.padding),
+            self.nonlinearity,
+            torch.nn.Conv3d(64, 25, kernel_size=self.kernel_size, padding=self.padding),
+            self.nonlinearity,
         )
 
         # Decoder
