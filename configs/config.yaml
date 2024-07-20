@@ -19,3 +19,4 @@ train_ratio: 0.8
 kernel_size: 4
 padding: "same"
 nonlinearity: "relu"  #'relu' or 'gelu'
+num_layers: 4

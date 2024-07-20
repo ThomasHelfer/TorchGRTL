@@ -20,7 +20,13 @@ from GeneralRelativity.Utils import (
 
 class SuperResolution3DNet(torch.nn.Module):
     def __init__(
-        self, factor, scaling_factor, kernel_size=3, padding="same", nonlinearity="relu"
+        self,
+        factor,
+        scaling_factor,
+        num_layers=1,
+        kernel_size=3,
+        padding="same",
+        nonlinearity="relu",
     ):
         super(SuperResolution3DNet, self).__init__()
         self.points = 6
@@ -38,6 +44,7 @@ class SuperResolution3DNet(torch.nn.Module):
             dtype=torch.double,
         )
         self.scaling_factor = scaling_factor
+        self.num_layers = num_layers
 
         if nonlinearity == "relu":
             self.nonlinearity = torch.nn.ReLU()
@@ -49,17 +56,39 @@ class SuperResolution3DNet(torch.nn.Module):
         # The first conv layer expands the channel size from 25 to 64.
         # The second conv layer further expands the channel size from 64 to 128.
         # ReLU activation functions are used for non-linearity.
-        self.encoder = torch.nn.Sequential(
-            torch.nn.Conv3d(25, 64, kernel_size=self.kernel_size, padding=self.padding),
-            self.nonlinearity,
-            torch.nn.Conv3d(64, 64, kernel_size=self.kernel_size, padding=self.padding),
-            self.nonlinearity,
-            torch.nn.Conv3d(64, 64, kernel_size=self.kernel_size, padding=self.padding),
-            self.nonlinearity,
-            torch.nn.Conv3d(64, 25, kernel_size=self.kernel_size, padding=self.padding),
-            self.nonlinearity,
+        layers = []
+        in_channels = 25
+        out_channels = 25
+        hidden_channels = 64
+        # First layer
+        layers.append(
+            nn.Conv3d(
+                in_channels, hidden_channels, kernel_size=kernel_size, padding=padding
+            )
         )
+        layers.append(self.nonlinearity)
 
+        # Hidden layers
+        for i in range(self.num_layers):
+            layers.append(
+                nn.Conv3d(
+                    hidden_channels,
+                    hidden_channels,
+                    kernel_size=kernel_size,
+                    padding=padding,
+                )
+            )
+            layers.append(self.nonlinearity)
+
+        # Last layer
+        layers.append(
+            nn.Conv3d(
+                hidden_channels, out_channels, kernel_size=kernel_size, padding=padding
+            )
+        )
+        layers.append(self.nonlinearity)
+
+        self.encoder = nn.Sequential(*layers)
         # Decoder
         # The decoder uses a transposed 3D convolution (or deconvolution) to upsample the feature maps.
         # The channel size is reduced from 128 back to 64.

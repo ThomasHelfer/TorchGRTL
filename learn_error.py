@@ -110,6 +110,7 @@ def main():
     lambda_fac = config["lambda_fac"]
     kernel_size = config["kernel_size"]
     padding = config["padding"]
+    num_layers = config["num_layers"]
 
     print(f"lambda_fac {type(scaling_factor)}")
 
@@ -127,7 +128,11 @@ def main():
 
     # Instantiate the model
     net = SuperResolution3DNet(
-        factor, scaling_factor=scaling_factor, kernel_size=kernel_size, padding=padding
+        factor,
+        scaling_factor=scaling_factor,
+        num_layers=num_layers,
+        kernel_size=kernel_size,
+        padding=padding,
     ).to(torch.double)
 
     # Create a random 3D low-resolution input tensor (batch size, channels, depth, height, width)
