@@ -1,5 +1,5 @@
 ADAMsteps: 501
-n_steps: 500
+n_steps: 100
 batch_size: 15
 res_level: 5
 scaling_factor: 0.0005
@@ -12,7 +12,7 @@ filenames_check: "/home/thelfer1/scr4_tedwar42/thelfer1/high_end_data_4/outputXd
 restart: False
 file_path: "model_epoch_counter_0000000049_data_time_1718669354.pth"
 lambda_fac: 0.0
-loss: Ham_mom  # Options Ham_mom Ham
+loss: Ham_mom_boundary_simple  # Options Ham_mom Ham
 lr_adam: 0.0001
 lr_bfgs: 0.1
 train_ratio: 0.8

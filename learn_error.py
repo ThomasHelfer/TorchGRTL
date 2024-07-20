@@ -36,7 +36,11 @@ from GeneralRelativity.TensorAlgebra import compute_christoffel
 from GeneralRelativity.Constraints import constraint_equations
 
 from SuperResolution.models import SuperResolution3DNet
-from SuperResolution.losses import Hamiltonian_loss, Hamiltonian_and_momentum_loss
+from SuperResolution.losses import (
+    Hamiltonian_loss,
+    Hamiltonian_and_momentum_loss,
+    Hamiltonian_and_momentum_loss_boundary_condition,
+)
 from SuperResolution.utils import load_config, copy_config_file
 
 time_stamp = int(time.time())
@@ -87,6 +91,12 @@ def main():
 
     # Copy the configuration file to the tracking directory
     copy_config_file(args.config, folder_name)
+
+    # Create an empty file with the wandb run name
+    run_name = wandb.run.name
+    run_name_file_path = os.path.join(folder_name, run_name)
+    with open(run_name_file_path, "w") as f:
+        pass
 
     # Access configuration variables
     ADAMsteps = config["ADAMsteps"]
@@ -195,6 +205,8 @@ def main():
         my_loss = Hamiltonian_loss(oneoverdx)
     elif config["loss"] == "Ham_mom":
         my_loss = Hamiltonian_and_momentum_loss(oneoverdx)
+    elif config["loss"] == "Ham_mom_boundary_simple":
+        my_loss = Hamiltonian_and_momentum_loss_boundary_condition(oneoverdx)
 
     net.train()
     net.to(device)
@@ -222,7 +234,7 @@ def main():
                     optimizerBFGS.zero_grad()
                 y_pred, y_interp = net(X_batch)
 
-                loss_train = my_loss(y_pred)
+                loss_train = my_loss(y_pred, y_interp)
                 if loss_train.requires_grad:
                     loss_train.backward()
                 return loss_train
@@ -231,7 +243,7 @@ def main():
             if counter < ADAMsteps:
                 y_pred, y_interp = net(X_batch)
 
-                loss_train = my_loss(y_pred)
+                loss_train = my_loss(y_pred, y_interp)
                 optimizerADAM.zero_grad()
                 loss_train.backward()
                 optimizerADAM.step()
@@ -273,9 +285,9 @@ def main():
                         diff - 1 : -diff - 1,
                     ]
                     y_val_pred, y_val_interp = net(X_val_batch)
-                    loss_val = my_loss(y_val_pred)
+                    loss_val = my_loss(y_val_pred, None)
                     total_loss_val += loss_val.item()
-                    interp_val += my_loss(y_val_interp).item()
+                    interp_val += my_loss(y_val_interp, None).item()
                 # Calculate the average loss
                 average_loss_val = total_loss_val / len(test_loader)
                 average_interp_val = interp_val / len(test_loader)
