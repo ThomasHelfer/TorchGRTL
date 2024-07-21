@@ -111,6 +111,9 @@ def main():
     kernel_size = config["kernel_size"]
     padding = config["padding"]
     num_layers = config["num_layers"]
+    nonlinearity = config["nonlinearity"]
+    masking_percentage = config["masking_percentage"]
+    mask_type = config["mask_type"]
 
     print(f"lambda_fac {type(scaling_factor)}")
 
@@ -125,7 +128,6 @@ def main():
     plt.colorbar()  # Add a colorbar to show the scale
     plt.title("2D Array Plot")
     plt.savefig("testarray.png")
-
     # Instantiate the model
     net = SuperResolution3DNet(
         factor,
@@ -133,6 +135,9 @@ def main():
         num_layers=num_layers,
         kernel_size=kernel_size,
         padding=padding,
+        nonlinearity=nonlinearity,
+        masking_percentage=masking_percentage,
+        mask_type=mask_type,
     ).to(torch.double)
 
     # Create a random 3D low-resolution input tensor (batch size, channels, depth, height, width)

@@ -18,15 +18,51 @@ from GeneralRelativity.Utils import (
 )
 
 
+def create_mask(tensor, zero_percentage):
+    """
+    Create a mask for a tensor such that a given percentage of elements are set to zero.
+
+    Args:
+        tensor (torch.Tensor): The input tensor for which the mask is created.
+        zero_percentage (float): The percentage of elements to set to zero (between 0 and 1).
+
+    Returns:
+        torch.Tensor: A mask with the same shape as the input tensor, containing zeros and ones.
+    """
+    # Get the shape and device of the input tensor
+    tensor_shape = tensor.shape
+    device = tensor.device
+
+    # Determine the total number of elements
+    num_elements = tensor.numel()
+
+    # Determine the number of elements to set to zero
+    num_zeros = int(num_elements * zero_percentage)
+
+    # Create a mask with the specified percentage of zeros
+    mask = torch.ones(num_elements, device=device)
+    mask[:num_zeros] = 0
+
+    # Shuffle the mask
+    mask = mask[torch.randperm(num_elements)]
+
+    # Reshape the mask to the shape of the tensor
+    mask = mask.reshape(tensor_shape)
+
+    return mask
+
+
 class SuperResolution3DNet(torch.nn.Module):
     def __init__(
         self,
         factor,
         scaling_factor,
-        num_layers=1,
+        num_layers=2,
         kernel_size=3,
         padding="same",
         nonlinearity="relu",
+        masking_percentage=0.1,
+        mask_type="random",
     ):
         super(SuperResolution3DNet, self).__init__()
         self.points = 6
@@ -34,6 +70,7 @@ class SuperResolution3DNet(torch.nn.Module):
         self.channels = 25
         self.kernel_size = kernel_size
         self.padding = padding
+        self.mask_type = mask_type
         self.interpolation = interp(
             num_points=self.points,
             max_degree=self.power,
@@ -45,6 +82,7 @@ class SuperResolution3DNet(torch.nn.Module):
         )
         self.scaling_factor = scaling_factor
         self.num_layers = num_layers
+        self.masking_percentage = masking_percentage
 
         if nonlinearity == "relu":
             self.nonlinearity = torch.nn.ReLU()
@@ -104,8 +142,23 @@ class SuperResolution3DNet(torch.nn.Module):
 
         x = self.interpolation(x)
         tmp = x.clone()
+        if self.training:
+            if self.mask_type == "random":
+                mask = create_mask(tmp, self.masking_percentage)
+                print(mask.shape)
+            elif self.mask_type == "checkers":
+                mask = torch.zeros_like(tmp)
+                mask[:, ::2, ::2, ::2] = 1
+                mask[:, 1::2, 1::2, 1::2] = 1
+            else:
+                # throw error
+                raise ValueError(
+                    "Invalid mask type. Please use 'random' or 'checkers'."
+                )
+        else:
+            mask = torch.ones_like(tmp)
 
-        x = x + self.encoder(tmp) * self.scaling_factor
+        x = x + mask * self.encoder(tmp) * self.scaling_factor
         return x, tmp
 
 
