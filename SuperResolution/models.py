@@ -71,15 +71,16 @@ class SuperResolution3DNet(torch.nn.Module):
         self.kernel_size = kernel_size
         self.padding = padding
         self.mask_type = mask_type
-        self.interpolation = interp(
-            num_points=self.points,
-            max_degree=self.power,
-            num_channels=self.channels,
-            learnable=False,
-            align_corners=True,
-            factor=factor,
-            dtype=torch.double,
-        )
+        if scaling_factor > 1:
+            self.interpolation = interp(
+                num_points=self.points,
+                max_degree=self.power,
+                num_channels=self.channels,
+                learnable=False,
+                align_corners=True,
+                factor=factor,
+                dtype=torch.double,
+            )
         self.scaling_factor = scaling_factor
         self.num_layers = num_layers
         self.masking_percentage = masking_percentage
@@ -125,8 +126,8 @@ class SuperResolution3DNet(torch.nn.Module):
 
     def forward(self, x):
         # Reusing the input data for faster learning
-
-        x = self.interpolation(x)
+        if self.scaling_factor > 1:
+            x = self.interpolation(x)
         tmp = x.clone()
         if self.training:
             if self.mask_type == "random":
