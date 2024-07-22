@@ -89,11 +89,7 @@ class SuperResolution3DNet(torch.nn.Module):
         elif nonlinearity == "gelu":
             self.nonlinearity = torch.nn.GELU()
 
-        # Encoder
-        # The encoder consists of two 3D convolutional layers.
-        # The first conv layer expands the channel size from 25 to 64.
-        # The second conv layer further expands the channel size from 64 to 128.
-        # ReLU activation functions are used for non-linearity.
+        ## lower res
         layers = []
         in_channels = 25
         out_channels = 25
@@ -124,18 +120,8 @@ class SuperResolution3DNet(torch.nn.Module):
                 hidden_channels, out_channels, kernel_size=kernel_size, padding=padding
             )
         )
-        layers.append(self.nonlinearity)
 
         self.encoder = nn.Sequential(*layers)
-        # Decoder
-        # The decoder uses a transposed 3D convolution (or deconvolution) to upsample the feature maps.
-        # The channel size is reduced from 128 back to 64.
-        # A final 3D convolution reduces the channel size back to the original size of 25.
-        self.decoder = torch.nn.Sequential(
-            torch.nn.ConvTranspose3d(128, 64, kernel_size=4, stride=2, padding=1),
-            torch.nn.ReLU(inplace=True),
-            torch.nn.Conv3d(64, 25, kernel_size=3, padding=1),
-        )
 
     def forward(self, x):
         # Reusing the input data for faster learning
@@ -145,11 +131,10 @@ class SuperResolution3DNet(torch.nn.Module):
         if self.training:
             if self.mask_type == "random":
                 mask = create_mask(tmp, self.masking_percentage)
-                print(mask.shape)
             elif self.mask_type == "checkers":
-                mask = torch.zeros_like(tmp)
-                mask[:, ::2, ::2, ::2] = 1
-                mask[:, 1::2, 1::2, 1::2] = 1
+                mask = torch.ones_like(tmp)
+                ratio = int(1.0 / self.masking_percentage)
+                mask[:, ::ratio, ::ratio, ::ratio] = 0
             else:
                 # throw error
                 raise ValueError(
