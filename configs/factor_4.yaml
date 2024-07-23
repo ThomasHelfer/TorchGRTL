@@ -1,17 +1,17 @@
 ADAMsteps: 400
 n_steps: 200
-batch_size: 15
+batch_size: 1
 res_level: 5
-scaling_factor: 0.0005
+scaling_factor: 0.005
 write_out_freq: 2
 # rescale factor
-factor: 1
+factor: 4
 # Data Source
 filenamesX: "/home/thelfer1/scr4_tedwar42/thelfer1/high_end_data/outputXdata_level{res_level}_step*.dat"
 filenames_check: "/home/thelfer1/scr4_tedwar42/thelfer1/high_end_data_4/outputXdata_level{res_level}_step*.dat"
 # Restarting
-restart: True
-file_path: "./Run15276304/model_epoch_counter_0000000104_data_time_1721691480.pth"
+restart: False
+file_path: "./Run15231471/model_epoch_counter_0000000120_data_time_1721595113.pth"
 lambda_fac: 0.0
 loss: Ham_mom  # Options Ham_mom Ham
 lr_adam: 0.00005
