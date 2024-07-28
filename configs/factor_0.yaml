@@ -23,3 +23,5 @@ nonlinearity: "gelu"  #'relu' or 'gelu'
 num_layers: 4
 masking_percentage: 0.0
 mask_type: random  # "checkers" or "random"
+downsample: 1  ## default one
+align_corners: True

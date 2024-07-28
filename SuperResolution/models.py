@@ -7,6 +7,7 @@ from torch import nn
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 from tqdm import tqdm
+import numpy as np
 
 from pyinterpx.Interpolation import interp
 from GeneralRelativity.Utils import (
@@ -63,6 +64,7 @@ class SuperResolution3DNet(torch.nn.Module):
         nonlinearity="relu",
         masking_percentage=0.1,
         mask_type="random",
+        align_corners=True,
     ):
         super(SuperResolution3DNet, self).__init__()
         self.points = 6
@@ -71,16 +73,18 @@ class SuperResolution3DNet(torch.nn.Module):
         self.kernel_size = kernel_size
         self.padding = padding
         self.mask_type = mask_type
-        if scaling_factor > 1:
+        self.factor = factor
+        if factor > 1:
             self.interpolation = interp(
                 num_points=self.points,
                 max_degree=self.power,
                 num_channels=self.channels,
                 learnable=False,
-                align_corners=True,
+                align_corners=align_corners,
                 factor=factor,
                 dtype=torch.double,
             )
+        self.align_corners = align_corners
         self.scaling_factor = scaling_factor
         self.num_layers = num_layers
         self.masking_percentage = masking_percentage
@@ -126,7 +130,7 @@ class SuperResolution3DNet(torch.nn.Module):
 
     def forward(self, x):
         # Reusing the input data for faster learning
-        if self.scaling_factor > 1:
+        if self.factor > 1:
             x = self.interpolation(x)
         tmp = x.clone()
         if self.training:
@@ -134,8 +138,12 @@ class SuperResolution3DNet(torch.nn.Module):
                 mask = create_mask(tmp, self.masking_percentage)
             elif self.mask_type == "checkers":
                 mask = torch.ones_like(tmp)
-                ratio = int(1.0 / self.masking_percentage)
-                mask[:, ::ratio, ::ratio, ::ratio] = 0
+                if self.masking_percentage != 0:
+                    ratio = int(1.0 / self.masking_percentage)
+                    random_shift = np.random.randint(0, ratio)
+                    mask[
+                        :, random_shift::ratio, random_shift::ratio, random_shift::ratio
+                    ] = 0
             else:
                 # throw error
                 raise ValueError(

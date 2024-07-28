@@ -115,6 +115,8 @@ def main():
     masking_percentage = config["masking_percentage"]
     mask_type = config["mask_type"]
     write_out_freq = config["write_out_freq"]
+    downsample = config["downsample"]
+    align_corners = config["align_corners"]
 
     print(f"lambda_fac {type(scaling_factor)}")
 
@@ -139,15 +141,19 @@ def main():
         nonlinearity=nonlinearity,
         masking_percentage=masking_percentage,
         mask_type=mask_type,
+        align_corners=align_corners,
     ).to(torch.double)
 
     # Create a random 3D low-resolution input tensor (batch size, channels, depth, height, width)
     input_tensor = torch.randn(
-        1, dataX.shape[4], dataX.shape[1], dataX.shape[2], dataX.shape[3]
+        1,
+        dataX.shape[4],
+        dataX.shape[1] // downsample,
+        dataX.shape[2] // downsample,
+        dataX.shape[3] // downsample,
     ).to(
         torch.double
     )  # Adjust dimensions as needed
-
     # Forward pass to obtain the high-resolution output
     output_tensor, _ = net(input_tensor)
     print("mean", torch.mean(output_tensor))
@@ -210,7 +216,7 @@ def main():
         net.load_state_dict(torch.load(file_path))
 
     # oneoverdx = 64.0 / 16.0
-    oneoverdx = (64.0 * 2**res_level) / 512.0 * (factor)
+    oneoverdx = (64.0 * 2**res_level) / 512.0 * float(factor) / float(downsample)
     print(f"dx {1.0/oneoverdx}")
     if config["loss"] == "Ham":
         my_loss = Hamiltonian_loss(oneoverdx)
@@ -223,16 +229,18 @@ def main():
     net.to(device)
     net.to(torch.double)
 
-    # my_loss = torch.nn.L1Loss()
+    L1Loss = torch.nn.L1Loss()
+
     print("training")
     pbar = trange(n_steps)
     for i in pbar:
         total_loss_train = 0
         for (y_batch,) in train_loader:
+            net.train()
             batchcounter = 0
             # for X_batch, y_batch in train_loader:
             y_batch = y_batch.to(device)
-            X_batch = y_batch[:, :, :, :, :].clone()
+            X_batch = y_batch[:, :, ::downsample, ::downsample, ::downsample].clone()
             y_batch = y_batch[
                 :, :25, diff - 1 : -diff - 1, diff - 1 : -diff - 1, diff - 1 : -diff - 1
             ]
@@ -280,13 +288,19 @@ def main():
 
         if counter % 1 == 0:
             with torch.no_grad():
+                net.eval()
                 total_loss_val = 0.0
                 interp_val = 0.0
+                L1Loss_val = 0.0
+                L1Loss_val_interp = 0.0
+                loss_hard_base = 0.0
                 for (y_val_batch,) in test_loader:
                     # for X_val_batch, y_val_batch in test_loader:
                     # Transfer batch to GPU
                     y_val_batch = y_val_batch.to(device)
-                    X_val_batch = y_val_batch[:, :, :, :, :].clone()
+                    X_val_batch = y_val_batch[
+                        :, :, ::downsample, ::downsample, ::downsample
+                    ].clone()
                     y_val_batch = y_val_batch[
                         :,
                         :25,
@@ -298,6 +312,14 @@ def main():
                     loss_val = my_loss(y_val_pred, None)
                     total_loss_val += loss_val.item()
                     interp_val += my_loss(y_val_interp, None).item()
+                    if downsample == factor:
+                        loss_hard_base += my_loss(y_val_interp, None)
+                        L1Loss_val += L1Loss(
+                            y_val_pred[:, 0, :, :, :], y_val_batch[:, 0, :, :, :]
+                        )
+                        L1Loss_val_interp += L1Loss(
+                            y_val_interp[:, 0, :, :, :], y_val_batch[:, 0, :, :, :]
+                        )
                 # Calculate the average loss
                 average_loss_val = total_loss_val / len(test_loader)
                 average_interp_val = interp_val / len(test_loader)
@@ -312,7 +334,15 @@ def main():
                         "step": counter,
                     }
                 )
-
+                if downsample == factor:
+                    wandb.log(
+                        {
+                            "loss/val_hard_base": loss_hard_base / len(test_loader),
+                            "L1Loss/val_interp": L1Loss_val_interp / len(test_loader),
+                            "L1Loss/val": L1Loss_val / len(test_loader),
+                            "step": counter,
+                        }
+                    )
         if counter % write_out_freq == 0:
             # Writing out network and scaler
             torch.save(
