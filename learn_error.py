@@ -224,12 +224,19 @@ def main():
         my_loss = Hamiltonian_and_momentum_loss(oneoverdx)
     elif config["loss"] == "Ham_mom_boundary_simple":
         my_loss = Hamiltonian_and_momentum_loss_boundary_condition(oneoverdx)
+    elif config["loss"] == "L1":
+        my_loss = torch.nn.L1Loss()
+        # raise Value error if downsample == factor
+        if downsample != factor:
+            raise ValueError("L1 loss not implemented for downsample == factor")
 
     net.train()
     net.to(device)
     net.to(torch.double)
 
+    # For validation error
     L1Loss = torch.nn.L1Loss()
+    ham_loss = Hamiltonian_and_momentum_loss(oneoverdx)
 
     print("training")
     pbar = trange(n_steps)
@@ -252,7 +259,7 @@ def main():
                     optimizerBFGS.zero_grad()
                 y_pred, y_interp = net(X_batch)
 
-                loss_train = my_loss(y_pred, y_interp)
+                loss_train = my_loss(y_pred, y_batch)
                 if loss_train.requires_grad:
                     loss_train.backward()
                 return loss_train
@@ -261,7 +268,7 @@ def main():
             if counter < ADAMsteps:
                 y_pred, y_interp = net(X_batch)
 
-                loss_train = my_loss(y_pred, y_interp)
+                loss_train = my_loss(y_pred, y_batch)
                 optimizerADAM.zero_grad()
                 loss_train.backward()
                 optimizerADAM.step()
@@ -294,6 +301,8 @@ def main():
                 L1Loss_val = 0.0
                 L1Loss_val_interp = 0.0
                 loss_hard_base = 0.0
+                Ham_loss = 0.0
+                Ham_loss_interp = 0.0
                 for (y_val_batch,) in test_loader:
                     # for X_val_batch, y_val_batch in test_loader:
                     # Transfer batch to GPU
@@ -309,17 +318,21 @@ def main():
                         diff - 1 : -diff - 1,
                     ]
                     y_val_pred, y_val_interp = net(X_val_batch)
-                    loss_val = my_loss(y_val_pred, None)
+                    loss_val = my_loss(y_val_pred, y_val_batch)
                     total_loss_val += loss_val.item()
-                    interp_val += my_loss(y_val_interp, None).item()
+                    interp_val += my_loss(y_val_interp, y_val_batch).item()
                     if downsample == factor:
-                        loss_hard_base += my_loss(y_val_interp, None)
                         L1Loss_val += L1Loss(
                             y_val_pred[:, 0, :, :, :], y_val_batch[:, 0, :, :, :]
                         )
                         L1Loss_val_interp += L1Loss(
                             y_val_interp[:, 0, :, :, :], y_val_batch[:, 0, :, :, :]
                         )
+                        loss_hard_base += ham_loss(y_val_batch, None)
+
+                        if config["loss"] == "L1":
+                            Ham_loss_interp += ham_loss(y_val_interp, None)
+                            Ham_loss += ham_loss(y_val_pred, None)
                 # Calculate the average loss
                 average_loss_val = total_loss_val / len(test_loader)
                 average_interp_val = interp_val / len(test_loader)
@@ -337,12 +350,23 @@ def main():
                 if downsample == factor:
                     wandb.log(
                         {
-                            "loss/val_hard_base": loss_hard_base / len(test_loader),
-                            "L1Loss/val_interp": L1Loss_val_interp / len(test_loader),
+                            "loss/val_hard_baseline": loss_hard_base / len(test_loader),
+                            "L1Loss/val_interp_baseline": L1Loss_val_interp
+                            / len(test_loader),
                             "L1Loss/val": L1Loss_val / len(test_loader),
                             "step": counter,
                         }
                     )
+                    if config["loss"] == "L1":
+                        wandb.log(
+                            {
+                                "Hamloss/val": Ham_loss / len(test_loader),
+                                "Hamloss/interp_val": Ham_loss_interp
+                                / len(test_loader),
+                                "step": counter,
+                            }
+                        )
+
         if counter % write_out_freq == 0:
             # Writing out network and scaler
             torch.save(
