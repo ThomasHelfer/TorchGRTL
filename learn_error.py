@@ -194,7 +194,9 @@ def main():
     dataset = TensorDataset(dataX)
 
     # Split the dataset into training and testing datasets
-    train_dataset, test_dataset = random_split(dataset, [num_train, num_test])
+    train_dataset, test_dataset = random_split(
+        dataset, [num_train, num_test], generator=torch.Generator().manual_seed(3)
+    )
     batch_size = config["batch_size"]
 
     # Create DataLoader for batching -- in case data gets larger
@@ -248,9 +250,14 @@ def main():
             # for X_batch, y_batch in train_loader:
             y_batch = y_batch.to(device)
             X_batch = y_batch[:, :, ::downsample, ::downsample, ::downsample].clone()
-            y_batch = y_batch[
-                :, :25, diff - 1 : -diff - 1, diff - 1 : -diff - 1, diff - 1 : -diff - 1
-            ]
+            if diff != 0:
+                y_batch = y_batch[
+                    :,
+                    :25,
+                    diff - 1 : -diff - 1,
+                    diff - 1 : -diff - 1,
+                    diff - 1 : -diff - 1,
+                ]
             batchcounter += 1
 
             # This is needed for LBFGS
@@ -310,18 +317,21 @@ def main():
                     X_val_batch = y_val_batch[
                         :, :, ::downsample, ::downsample, ::downsample
                     ].clone()
-                    y_val_batch = y_val_batch[
-                        :,
-                        :25,
-                        diff - 1 : -diff - 1,
-                        diff - 1 : -diff - 1,
-                        diff - 1 : -diff - 1,
-                    ]
+                    if diff != 0:
+                        y_val_batch = y_val_batch[
+                            :,
+                            :25,
+                            diff - 1 : -diff - 1,
+                            diff - 1 : -diff - 1,
+                            diff - 1 : -diff - 1,
+                        ]
                     y_val_pred, y_val_interp = net(X_val_batch)
                     loss_val = my_loss(y_val_pred, y_val_batch)
                     total_loss_val += loss_val.item()
                     interp_val += my_loss(y_val_interp, y_val_batch).item()
                     if downsample == factor:
+                        print(y_val_pred[:, 0, :, :, :].shape)
+                        print(y_val_batch[:, 0, :, :, :].shape)
                         L1Loss_val += L1Loss(
                             y_val_pred[:, 0, :, :, :], y_val_batch[:, 0, :, :, :]
                         )
