@@ -1,21 +1,21 @@
-import os
 import re
+import glob
+import os
 import yaml
 from typing import Tuple, Dict, Any
 
 from torch import nn
 import torch
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader, TensorDataset, random_split
 from tqdm import tqdm
 import numpy as np
 
 from pyinterpx.Interpolation import interp
-from GeneralRelativity.Utils import (
-    get_box_format,
-    TensorDict,
-    cut_ghosts,
-    keys,
-    keys_all,
+from GeneralRelativity.Utils import get_box_format
+from SuperResolution.losses import (
+    Hamiltonian_loss,
+    Hamiltonian_and_momentum_loss,
+    Hamiltonian_and_momentum_loss_boundary_condition,
 )
 
 
@@ -159,8 +159,7 @@ class SuperResolution3DNet(torch.nn.Module):
 def check_performance(
     net: torch.nn.Module,
     datafolder: str,
-    my_loss: torch.nn.Module,
-    device: torch.device,
+    config: Dict[str, Any],
     batchsize: int = 50,
 ) -> Tuple[float, float]:
     """
@@ -176,6 +175,23 @@ def check_performance(
     Returns:
         Tuple[float, float]: The total validation loss and the interpolation validation loss.
     """
+    res_level = config["res_level"]
+    downsample = config["downsample"]
+    factor = config["factor"]
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+    # oneoverdx = 64.0 / 16.0
+    oneoverdx = (64.0 * 2**res_level) / 512.0 * float(factor) / float(downsample)
+    print(f"dx {1.0/oneoverdx}")
+    if config["loss"] == "Ham":
+        my_loss = Hamiltonian_loss(oneoverdx)
+    elif config["loss"] == "Ham_mom":
+        my_loss = Hamiltonian_and_momentum_loss(oneoverdx)
+    elif config["loss"] == "Ham_mom_boundary_simple":
+        my_loss = Hamiltonian_and_momentum_loss_boundary_condition(oneoverdx)
+    elif config["loss"] == "L1":
+        my_loss = torch.nn.L1Loss()
+
     num_vars = 25
 
     # Load data in the required format
@@ -248,7 +264,13 @@ def load_model(directory_path: str) -> Tuple[nn.Module, Dict[str, Any]]:
     checkpoints = []
 
     # Path to the config.yaml file
-    config_file_path = os.path.join(directory_path, "config.yaml")
+    yaml_files = glob.glob(os.path.join(directory_path, "*.yaml"))
+
+    if yaml_files:
+        # If a YAML file is found, use the first one
+        config_file_path = yaml_files[0]
+    else:
+        print("No YAML file found in the directory.")
     print(f"Config file path: {config_file_path}")
 
     # Read Yaml config file
@@ -265,25 +287,205 @@ def load_model(directory_path: str) -> Tuple[nn.Module, Dict[str, Any]]:
             index = int(match.group(1))
             checkpoints.append((index, filename))
 
-    # Initialize the model with parameters from the config
+    ADAMsteps = config["ADAMsteps"]
+    n_steps = config["n_steps"]
+    res_level = config["res_level"]
+    scaling_factor = config["scaling_factor"]
     factor = config["factor"]
-    net = SuperResolution3DNet(factor, config["scaling_factor"]).to(torch.double)
+    filenamesX = config["filenamesX"].format(res_level=res_level)
+    restart = config["restart"]
+    file_path = config["file_path"]
+    lambda_fac = config["lambda_fac"]
+    kernel_size = config["kernel_size"]
+    padding = config["padding"]
+    num_layers = config["num_layers"]
+    nonlinearity = config["nonlinearity"]
+    masking_percentage = config["masking_percentage"]
+    mask_type = config["mask_type"]
+    write_out_freq = config["write_out_freq"]
+    downsample = config["downsample"]
+    align_corners = config["align_corners"]
+
+    net = SuperResolution3DNet(
+        factor,
+        scaling_factor=scaling_factor,
+        num_layers=num_layers,
+        kernel_size=kernel_size,
+        padding=padding,
+        nonlinearity=nonlinearity,
+        masking_percentage=masking_percentage,
+        mask_type=mask_type,
+        align_corners=align_corners,
+    ).to(torch.double)
+
+    # Pattern to match the checkpoint files
+    pattern = r"model_epoch_counter_(\d+)_data_time_\d+\.pth"
+
+    # List to store the checkpoint file names and their indices
+    checkpoints = []
+
+    # Iterate through the files in the directory to find checkpoint files
+    for filename in os.listdir(directory_path):
+        match = re.match(pattern, filename)
+        if match:
+            index = int(match.group(1))
+            checkpoints.append((index, filename))
 
     # Find the checkpoint with the largest index
     if checkpoints:
         largest_index_checkpoint = max(checkpoints, key=lambda x: x[0])
         largest_checkpoint_file = largest_index_checkpoint[1]
+        print(largest_index_checkpoint[1])
     else:
         raise FileNotFoundError("No checkpoint files found.")
 
+    path_to_largest_checkpoint_file = os.path.join(
+        directory_path, largest_checkpoint_file
+    )
     # Load the model state if restarting
-    if config["restart"] and os.path.exists(largest_checkpoint_file):
-        net.load_state_dict(
-            torch.load(os.path.join(directory_path, largest_checkpoint_file))
-        )
+    if os.path.exists(path_to_largest_checkpoint_file):
+        net.load_state_dict(torch.load(path_to_largest_checkpoint_file))
+        print(f"loaded model from {path_to_largest_checkpoint_file}")
     else:
         print(
-            f"No restart or checkpoint file not found at path: {largest_checkpoint_file}"
+            f"No restart or checkpoint file not found at path: {path_to_largest_checkpoint_file}"
         )
 
     return net, config
+
+
+def calculate_test_loss(
+    net: torch.nn.Module, config: Dict[str, Any], name: str
+) -> Dict[str, float]:
+    """
+    Loads data, processes it, and computes various metrics for a given network and configuration.
+
+    Parameters:
+    net (torch.nn.Module): The neural network model to be evaluated.
+    config (Dict[str, Any]): A dictionary containing configuration parameters.
+    name (str): The name of the current configuration.
+
+    Returns:
+    Dict[str, float]: A dictionary containing various computed metrics.
+    """
+    train_ratio = config["train_ratio"]
+    res_level = config["res_level"]
+    filenamesX = config["filenamesX"].format(res_level=res_level)
+    downsample = config["downsample"]
+    factor = config["factor"]
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+    # oneoverdx = 64.0 / 16.0
+    oneoverdx = (64.0 * 2**res_level) / 512.0 * float(factor) / float(downsample)
+    print(f"dx {1.0/oneoverdx}")
+    if config["loss"] == "Ham":
+        my_loss = Hamiltonian_loss(oneoverdx)
+    elif config["loss"] == "Ham_mom":
+        my_loss = Hamiltonian_and_momentum_loss(oneoverdx)
+    elif config["loss"] == "Ham_mom_boundary_simple":
+        my_loss = Hamiltonian_and_momentum_loss_boundary_condition(oneoverdx)
+    elif config["loss"] == "L1":
+        my_loss = torch.nn.L1Loss()
+
+    # For validation error
+    L1Loss = torch.nn.L1Loss()
+    ham_loss = Hamiltonian_and_momentum_loss(oneoverdx)
+
+    num_varsX = 25
+    dataX = get_box_format(filenamesX, num_varsX)
+    # Cutting out extra values added for validation
+    dataX = dataX[:, :, :, :, :25]
+
+    # Calculate the number of samples for each split
+    num_samples = len(dataX)
+    num_train = int(train_ratio * num_samples)
+    num_test = num_samples - num_train
+
+    input_tensor = torch.randn(
+        1,
+        dataX.shape[4],
+        dataX.shape[1] // downsample,
+        dataX.shape[2] // downsample,
+        dataX.shape[3] // downsample,
+    ).to(
+        torch.double
+    )  # Adjust dimensions as needed
+    # Forward pass to obtain the high-resolution output
+    output_tensor, _ = net(input_tensor)
+
+    diff = (dataX.shape[-2] - output_tensor.shape[-1]) // 2
+
+    dataX = dataX.permute(0, 4, 1, 2, 3)
+
+    # Create a dataset from tensors
+    dataset = TensorDataset(dataX)
+
+    # Split the dataset into training and testing datasets
+    train_dataset, test_dataset = random_split(
+        dataset, [num_train, num_test], generator=torch.Generator().manual_seed(3)
+    )
+    batch_size = config["batch_size"]
+
+    # Create DataLoader for batching -- in case data gets larger
+    test_loader = DataLoader(
+        dataset=test_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=0,
+    )
+    net.to(device)
+    net.to(torch.double)
+
+    with torch.no_grad():
+        net.eval()
+        total_loss_val = 0.0
+        interp_val = 0.0
+        L1Loss_val = 0.0
+        L1Loss_val_interp = 0.0
+        loss_hard_base = 0.0
+        Ham_loss = 0.0
+        Ham_loss_interp = 0.0
+        for (y_val_batch,) in test_loader:
+            # for X_val_batch, y_val_batch in test_loader:
+            # Transfer batch to GPU
+            y_val_batch = y_val_batch.to(device)
+            X_val_batch = y_val_batch[
+                :, :, ::downsample, ::downsample, ::downsample
+            ].clone()
+            if diff != 0:
+                y_val_batch = y_val_batch[
+                    :,
+                    :25,
+                    diff - 1 : -diff - 1,
+                    diff - 1 : -diff - 1,
+                    diff - 1 : -diff - 1,
+                ]
+            y_val_pred, y_val_interp = net(X_val_batch)
+            loss_val = my_loss(y_val_pred, y_val_batch)
+            total_loss_val += loss_val.item()
+            interp_val += my_loss(y_val_interp, y_val_batch).item()
+            if downsample == factor:
+                L1Loss_val += L1Loss(
+                    y_val_pred[:, 0, :, :, :], y_val_batch[:, 0, :, :, :]
+                )
+                L1Loss_val_interp += L1Loss(
+                    y_val_interp[:, 0, :, :, :], y_val_batch[:, 0, :, :, :]
+                )
+                loss_hard_base += ham_loss(y_val_batch, None)
+
+                if config["loss"] == "L1":
+                    Ham_loss_interp += ham_loss(y_val_interp, None)
+                    Ham_loss += ham_loss(y_val_pred, None)
+
+        N = len(test_loader)
+        metrics = {
+            "config_name": name,  # Example of saving config name
+            "total_loss_val": total_loss_val / N,
+            "interp_val": interp_val / N,
+            "L1Loss_val": L1Loss_val / N,
+            "L1Loss_val_interp": L1Loss_val_interp / N,
+            "loss_hard_base": loss_hard_base / N,
+            "Ham_loss": Ham_loss / N,
+            "Ham_loss_interp": Ham_loss_interp / N,
+        }
+    return metrics

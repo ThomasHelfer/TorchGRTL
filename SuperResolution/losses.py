@@ -15,9 +15,6 @@ from GeneralRelativity.CCZ4Geometry import compute_ricci
 from GeneralRelativity.Constraints import constraint_equations
 
 
-from SuperResolution.models import SuperResolution3DNet, check_performance
-
-
 #  Magical loss coming from General Relativity
 class Hamiltonian_loss:
     def __init__(self, oneoverdx: float):
