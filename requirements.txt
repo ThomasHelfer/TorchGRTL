@@ -8,3 +8,5 @@ matplotlib
 pyinterpx
 pyyaml
 wandb
+pandas
+jupyter
