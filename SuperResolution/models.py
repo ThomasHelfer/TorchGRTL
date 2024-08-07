@@ -182,14 +182,8 @@ def check_performance(
     # oneoverdx = 64.0 / 16.0
     oneoverdx = (64.0 * 2**res_level) / 512.0 * float(factor) / float(downsample)
     print(f"dx {1.0/oneoverdx}")
-    if config["loss"] == "Ham":
-        my_loss = Hamiltonian_loss(oneoverdx)
-    elif config["loss"] == "Ham_mom":
-        my_loss = Hamiltonian_and_momentum_loss(oneoverdx)
-    elif config["loss"] == "Ham_mom_boundary_simple":
-        my_loss = Hamiltonian_and_momentum_loss_boundary_condition(oneoverdx)
-    elif config["loss"] == "L1":
-        my_loss = torch.nn.L1Loss()
+
+    my_loss = Hamiltonian_and_momentum_loss(oneoverdx)
 
     num_vars = 25
 
