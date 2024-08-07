@@ -1,0 +1,27 @@
+ADAMsteps: 2000
+n_steps: 2000
+batch_size: 15
+res_level: 9
+scaling_factor: 0.00001
+write_out_freq: 1
+# rescale factor
+factor: 1
+# Data Source
+filenamesX: "/home/thelfer1/scr4_tedwar42/thelfer1/high_end_data/outputXdata_level{res_level}_step00[01234]*.dat"
+filenames_check: "/home/thelfer1/scr4_tedwar42/thelfer1/high_end_data_4/outputXdata_level{res_level}_step*.dat"
+# Restarting
+restart: False
+file_path: "./Run15359188/model_epoch_counter_0000000399_data_time_1721913461.pth"
+lambda_fac: 0.0
+loss: Ham_mom  # Options Ham_mom Ham L1
+lr_adam: 0.0005
+lr_bfgs: 0.1
+train_ratio: 0.8
+kernel_size: 4
+padding: "same"
+nonlinearity: "relu"  #'relu' or 'gelu'
+num_layers: 4
+masking_percentage: 0.25
+mask_type: checkers  # "checkers" or "random"
+downsample: 1  ## default one
+align_corners: False
