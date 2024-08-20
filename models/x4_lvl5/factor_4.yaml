@@ -11,7 +11,7 @@ filenamesX: "/home/thelfer1/scr4_tedwar42/thelfer1/high_end_data/outputXdata_lev
 filenames_check: "/home/thelfer1/scr4_tedwar42/thelfer1/high_end_data_4/outputXdata_level{res_level}_step*.dat"
 # Restarting
 restart: True
-file_path: "./Run15556721/model_epoch_counter_0000000032_data_time_1722605202.pth"
+file_path: "./Run15597328/model_epoch_counter_0000000068_data_time_1722712289.pth"
 lambda_fac: 0.0
 loss: Ham_mom  # Options Ham_mom Ham
 lr_adam: 0.00005
