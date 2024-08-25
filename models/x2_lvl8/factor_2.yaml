@@ -10,8 +10,8 @@ factor: 2
 filenamesX: "/home/thelfer1/scr4_tedwar42/thelfer1/high_end_data/outputXdata_level{res_level}_step00*.dat"
 filenames_check: "/home/thelfer1/scr4_tedwar42/thelfer1/high_end_data_4/outputXdata_level{res_level}_step*.dat"
 # Restarting
-restart: False
-file_path: "./Run15521648/model_epoch_counter_0000000399_data_time_1721913461.pth"
+restart: True
+file_path: "./Run15571246/model_epoch_counter_0000000015_data_time_1722656427.pth"
 lambda_fac: 0.0
 loss: Ham_mom  # Options Ham_mom Ham L1
 lr_adam: 0.00005
