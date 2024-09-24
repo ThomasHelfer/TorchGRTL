@@ -10,7 +10,7 @@
 
 
 ## Overview
-TorchGRTL is a Python library that provides a PyTorch-based implementation of key components of [GRTL codebase](https://example.com](https://github.com/GRTLCollaboration/GRChombo)) . It uses GPU optimisation and Autodiff of PyTorch to accelerate computations to improve black hole simulations. 
+TorchGRTL is a Python library for the application of deep learning to Numerical Relativity. It is based on the [GRTL codebase](https://example.com](https://github.com/GRTLCollaboration/GRChombo)) (formerly known as GRChombo) codebase. 
 
 ## Installation
 
@@ -38,11 +38,38 @@ Before installing TorchGRTL, ensure you have the following prerequisites:
    pre-commit install
    ```
 
-## Usage
+## Usage 
 
-   The TorchGRTL library offers powerful tools to compute a variety of quantities essential in numerical relativity. Here are some examples of how you can use the library:
+### Training models 
 
-### Computing Christoffel Symbols
+   To first learn a model please download the training dataset from <https://huggingface.co/datasets/thelfer/BinaryBlackHole> and adapt the path in yaml [<configs/factor_2.yaml>](https://github.com/ThomasHelfer/TorchGRTL/blob/main/configs/factor_2.yaml).
+
+   ```yaml
+factor: 2
+# Data Source
+filenamesX: "<ADAPT TO YOUR LOCAL PATH>/outputXdata_level{res_level}_step*.dat"
+filenames_check: "/home/thelfer1/scr4_tedwar42/thelfer1/high_end_data_4/outputXdata_level{res_level}_step*.dat"
+# Restarting
+restart: False
+   ```
+
+  To run the code, simply run
+   ```bash
+   python learn_error.py configs/factor_2.yaml
+   ```
+
+### Evaluate models metrics 
+
+  Copy your model fold in the /models folder and run 
+
+   ```bash
+   python evaluate_models.py 
+   ```
+
+  the corresponding metrics in the outputfile 'metrics_results.csv' can be visualised in notebook.ipynb
+
+
+### Computing Constraints
 
    You can compute the Christoffel symbols, which are crucial in the context of general relativity for defining the Levi-Civita connection and geodesic equations:
 
