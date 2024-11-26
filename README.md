@@ -1,5 +1,3 @@
-![Unittest](https://github.com/ThomasHelfer/TorchGRTL/actions/workflows/actions.yml/badge.svg)
-[![License: MIT](https://img.shields.io/badge/License-MIT-red.svg)](https://opensource.org/licenses/MIT)
 
 
 # TorchGRTL - Numerical General Relativity in PyTorch
@@ -7,7 +5,17 @@
     <img src="https://github.com/ThomasHelfer/TorchGRTL/blob/main/img/logo_cropped.png" alt="no alignment" width="25%" height="auto"/>
 </p>
 
+<div align="center">
 
+![Unittest](https://github.com/ThomasHelfer/TorchGRTL/actions/workflows/actions.yml/badge.svg)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue)](https://opensource.org/licenses/MIT)
+[![arXiv: 2411.02453](https://img.shields.io/static/v1?label=arXiv&message=2411.02453&color=B31B1B&logo=arXiv)](https://arxiv.org/abs/2411.02453)
+
+[![Hugging Face Dataset: Validation](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Dataset%3A%20BinaryBlackHoleValidation-FFD21E)](https://huggingface.co/datasets/thelfer/BinaryBlackHoleValidation)
+[![Hugging Face Dataset: Train](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Dataset%3A%20BinaryBlackHole-FFD21E)](https://huggingface.co/datasets/thelfer/BinaryBlackHole)
+
+
+</div>
 
 ## Overview
 TorchGRTL is a Python library for the application of deep learning to Numerical Relativity. It is based on the [GRTL codebase](https://example.com](https://github.com/GRTLCollaboration/GRChombo)) (formerly known as GRChombo) codebase. 
